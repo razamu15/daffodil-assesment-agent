@@ -1,6 +1,6 @@
 # System Design & Infrastructure
 
-Written for: Saad. Doc 2 of 4. What runs where on AWS, how CDK brings it up, and the exact steps to do it.
+Written for: Saad. Doc 2 of 4. API surface and keys synced with the Track 0 contract. What runs where on AWS, how CDK brings it up, and the exact steps to do it.
 
 Before you start: finish `saad_aws_cli_setup.md`. It gets you to the starting line.
 
@@ -127,18 +127,21 @@ UI ─ POST /api/bills/:id/approve {acceptedExceptions[]} ─► API Lambda
 | `POST /api/chat` | Start a turn → `{turnId}` | token |
 | `GET /api/turns/:id` | Poll a turn | token |
 | `GET /api/sessions` | List chats | token |
+| `GET /api/sessions/:id/messages` | A chat's history (from AgentCore) | token |
 | `POST /api/documents` | Upload a screenshot or paste | token |
+| `GET /api/documents/:id` | Source document (+ image bytes) for "source beside extraction" | token |
 | `GET /api/helpers` | Helpers and key/payment info | token |
 | `GET /api/terms?helperId=` | Agreement terms and history | token |
 | `GET /api/bills`, `GET /api/bills/:id` | Bills and checks | token |
-| `GET /api/month-status?period=` | Derived status (plain code) | token |
+| `GET /api/month-status?month=` | Derived status (plain code) | token |
 | `GET /api/actions?status=` | Pending decisions | token |
 | `POST /api/actions/:ref/confirm` | **The commit** | token |
 | `POST /api/actions/:ref/reject` | Reject | token |
 | `POST /api/bills/:id/approve` | Approve button | token |
+| `GET /api/messages?helperId=` | Drafted messages to copy | token |
 | `POST /api/messages/:id/handed-off` | "I sent it" | token |
 
-This contract is written once as zod schemas in `packages/domain` and used by the UI, API, and mock server (Doc 4 §2).
+This contract is written once as zod schemas in `packages/domain` (`api/routes.ts`) and used by the UI, API, and mock server (Doc 4 §2). Confirm and reject send the `actionVersion` the user saw; confirm may carry an edited `messageBody`. A STALE outcome is a 200 with `action.status = STALE`, not an error.
 
 ---
 
@@ -160,7 +163,7 @@ MSG#<createdAt>#<messageId>                 OutboundMessage
 NOTE#<noteId>                               HelperNote
 DOC#<docId>                                 SourceDocument
 SESSION#<sessionId>                         Session (holds activeTurnId lock)
-TURN#<sessionId>#<createdAt>                Turn trace
+TURN#<turnId>                               Turn trace (sessionId as an attribute; GET /api/turns/:id has only the id)
 COUNTER#<name>                              atomic counters (action refs)
 ```
 
@@ -172,7 +175,7 @@ COUNTER#<name>                              atomic counters (action refs)
 | Terms for a helper | `begins_with(SK, "TERM#<helperId>#")` |
 | Bills for a month | `begins_with(SK, "BILL#2026-09")` |
 | Pending actions | `begins_with(SK, "ACTION#")`, filter on status |
-| Turns of a session | `begins_with(SK, "TURN#<sessionId>#")` |
+| Turns of a session | `begins_with(SK, "TURN#")`, filter on `sessionId` (small data) |
 
 ### Why single table, and what's the catch
 
@@ -207,7 +210,7 @@ infra/
 
 | Construct | Creates |
 |---|---|
-| `Data` | DynamoDB table (on-demand, `DESTROY`), uploads bucket (private, `autoDeleteObjects`) |
+| `Data` | DynamoDB table (on-demand, `DESTROY`), uploads bucket (private, `autoDeleteObjects`). The bucket backs the `BlobStore` seam |
 | `Memory` | AgentCore Memory resource with strategies. **[VERIFY]** L1 `CfnMemory` name and properties |
 | `Agent` | Agent Lambda (esbuild-bundled, 5 min timeout), Bedrock + AgentCore + table permissions, async retries = 0 |
 | `Api` | API Lambda, HTTP API route `ANY /api/{proxy+}` |

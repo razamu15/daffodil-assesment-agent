@@ -1,6 +1,6 @@
 # Agent Design & Code
 
-Written for: Saad. Doc 3 of 4. Covers the agent, the data model, the checker, and the code shape. "§" in `cheatsheet` refers to `agents-cheatsheet_latest.md`.
+Written for: Saad. Doc 3 of 4. Synced with the Track 0 contract (§10). Covers the agent, the data model, the checker, and the code shape. "§" in `cheatsheet` refers to `agents-cheatsheet_latest.md`.
 
 Items marked **[DECIDE]** need your call.
 
@@ -98,7 +98,7 @@ content (S3 key or text), messageDate?, receivedAt, sessionId, messageId
 
 #### AgreementTerm
 ```
-termId, helperId, serviceKind, pricingRule, schedule,
+termId, helperId, serviceKind, serviceLabel, pricingRules[], schedule,
 effectiveFrom, effectiveTo | null,
 sourceDocId, sourceQuote, assumptions[],
 supersedesTermId | null, createdByActionRef
@@ -171,8 +171,8 @@ checkSnapshot, termVersionIds[]
 
 #### PendingAction
 ```
-ref (short int), type: AGREEMENT_CHANGE | BILL_APPROVAL | HELPER_MESSAGE | HELPER_ENGAGEMENT_END,
-targetKey, payload (snapshot), basedOnVersion,
+ref (short int), type: HELPER_PROFILE_CHANGE | AGREEMENT_CHANGE | BILL_APPROVAL | HELPER_MESSAGE | HELPER_ENGAGEMENT_END,
+targetKey, payload (snapshot), basedOn (ActionBasis union, see §10),
 status: PENDING | CONFIRMED | REJECTED | WITHDRAWN | SUPERSEDED | STALE | EXPIRED,
 supersededByRef?, createdAt, resolvedAt, resolvedBy: USER_UI | SYSTEM,
 sourceSessionId, sourceMessageId, sourceDocId?, assumptions[]
@@ -230,7 +230,7 @@ MessageReason, MessageStatus, DocumentKind
 ```
 ServiceKind: BABYSITTING_STANDARD | BABYSITTING_DATE_NIGHT
            | CLEANING_REGULAR | CLEANING_DEEP
-           | DOG_WALK_30 | DOG_WALK_60
+           | DOG_WALK_30 | DOG_WALK_60 | OTHER   (OTHER is identified by serviceLabel)
 ```
 
 New helper types and service kinds are added here, in one place.
@@ -249,7 +249,7 @@ The heart of correctness. `checkBill(bill, termsInEffect, household) → BillChe
 | `DIFFERS` | Computable, billed ≠ expected (delta and reason) | Lupe 9/1: $150 vs $140 |
 | `NOT_COVERED` | No agreement covers it | Priya's $40 fee |
 | `CANNOT_COMPUTE` | A term is ambiguous or inputs are missing | "late rate" undefined |
-| `UNVERIFIABLE` | Unknowable by nature | Theo's walk count |
+| `UNVERIFIABLE` | Unknowable by nature | A reimbursement line ("pizza $18"). Theo's walk *count* is a bill-level `QUANTITY_UNVERIFIABLE` INFO finding; his lines are `MATCHES` |
 
 **Never collapse "unknown" into "matches."**
 
@@ -353,6 +353,7 @@ Guidance only. **Not** the safety layer (cheatsheet §7.1).
 
 | Tool | Notes |
 |---|---|
+| `propose_helper_profile(helperId?, profile)` | Create or update a helper (name, role, key, payment, contact). Gated like terms |
 | `propose_agreement_change(...)` | Returns `needs_decision` with conflicts when the target key clashes |
 | `propose_bill_approval(billId, acceptedExceptions[])` | Snapshots the current check and term versions |
 | `propose_helper_message(helperId, reason, body)` | Draft. Jordan edits and confirms |
@@ -415,7 +416,7 @@ Three layers (cheatsheet §7.3):
 | Layer | Job | Who |
 |---|---|---|
 | Detect | On propose, find pending actions with the same `targetKey` | Code |
-| Enforce | On confirm, compare `basedOnVersion`. Stale → `STALE` | Code |
+| Enforce | On confirm, re-read `basedOn`. Changed → `STALE` | Code |
 | Explain | Tell Jordan, let them choose | Model |
 
 ```
@@ -527,3 +528,27 @@ You asked for simpler options. Here they are, simplest to most complex.
 - `token = base64(expiry) + "." + HMAC(APP_PASSWORD, expiry)`. Stateless, no signing-key secret.
 - Compare in constant time. Expire after e.g. 12 hours.
 - Login route is the only unauthenticated API route.
+
+---
+
+## 10. Track 0 contract changes (source of truth: `packages/domain`)
+
+Track 0 turned §2 to §4 into zod schemas. Where the doc was ambiguous or missed a case, the code decided. The changes:
+
+| # | Change | Why |
+|---|---|---|
+| C1 | `AgreementTerm.pricingRules[]` (was one `pricingRule`). A term's price is the composition of its rules | Priya's standard rate is HOURLY + HOURLY_AFTER + DAY_MULTIPLIER for one service kind. One term per service kind stays true. Composition rules are documented in `entities/agreement.ts` |
+| C2 | `DAY_MULTIPLIER.appliesTo: BASE_RATE \| ALL_HOURLY_RATES \| UNSPECIFIED` | "Time and a half" doesn't say whether the late rate is multiplied. UNSPECIFIED is honest; the checker computes where readings agree |
+| C3 | `HelperRole.OTHER`, `ServiceKind.OTHER` + required `serviceLabel`, `PaymentMethod.OTHER` | Unseen-input drill (a tutor). Without these the agent couldn't record a new helper type at all. OTHER services are keyed by label (`termSlot`) |
+| C4 | Money is integer cents everywhere, including tool and extraction schemas (`*Cents` fields) | One representation, no float math |
+| C5 | New `PendingActionType.HELPER_PROFILE_CHANGE` and tool `propose_helper_profile` | The app starts empty, and nothing else could create a helper through the gate |
+| C6 | `basedOnVersion` → `basedOn: ActionBasis` (NEW_ENTITY, HELPER_VERSION, BILL_VERSION, TERM_SLOT, NONE) | A term change is based on "the term in this slot", not a single row version. Explicit kinds, no inferring from null |
+| C7 | LineItem gains `serviceDate`, `unitPriceBilledCents`, `relatedLineId`, `sourceQuote`; `serviceKind` nullable; `LineKind.REIMBURSEMENT` | Lupe's lines have dates but no times. Theo states unit prices. Priya's fee hangs off a visit. Unknown service stays null |
+| C8 | BillCheck: typed `findings[]` union, severity tables (`LINE_STATUS_SEVERITY`, `BILL_FINDING_SEVERITY`, `VERDICT_BY_WORST_SEVERITY`), `agreedTotalCents` | §3.3 verdict table as data. "Expected total" ($556 for Priya) has a name |
+| C9 | Theo: lines `MATCHES`; `QUANTITY_UNVERIFIABLE` + `OCCURRENCE_COUNT_PLAUSIBILITY` (20 billed vs **22** weekdays) as INFO findings | A line can't be both "rate correct" and "unverifiable". No holiday calendar exists, so the count is 22, not 21; the bill's own remark explains Labor Day |
+| C10 | `BillingPeriodState.CHECKED_NEEDS_INFO` | NEEDS_INFO is not "flagged" and not "ok" |
+| C11 | `HelperNote.noteKind: UNENCODED_TERM \| REVIEW_FLAG` + `billId` | `flag_for_review` needs somewhere to persist |
+| C12 | Bill: `helperRemarks[]`, `supersededByBillId`, nullable `statedTotalCents` | "No walk on Labor Day" is worth keeping. Some bills state no total |
+| C13 | `Approval.approvedBy: ActionResolver` (USER_UI), not `JORDAN` | One password; we can't know which person clicked |
+| C14 | `DocumentKind.CHAT_STATEMENT` | "Lupe goes to $150 on the 15th" typed in chat is a source too |
+| C15 | Extraction names helpers by name; the agent maps names → ids. Bill extraction lines use `relatedLineIndex` | The quarantined call has no ids |

@@ -1,0 +1,21 @@
+{
+  "name": "@helper-assistant/local-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@helper-assistant/domain": "*",
+    "@helper-assistant/api": "*",
+    "@helper-assistant/agent": "*",
+    "@helper-assistant/store": "*",
+    "@hono/node-server": "^2.1.5"
+  }
+}

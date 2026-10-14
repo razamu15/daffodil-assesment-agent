@@ -1,6 +1,6 @@
 # Build Plan: Logistics, Parallelization, Testing
 
-Written for: Saad. Doc 4 of 4. This replaces `build-plan_v1.md`, which is kept for the record. The product, system, and agent parts of v1 now live in Docs 1 to 3. This doc is only about **how to build it**.
+Written for: Saad. Doc 4 of 4. The product, system, and agent parts live in Docs 1 to 3. This doc is only about **how to build it**.
 
 | Doc | What it covers |
 |---|---|
@@ -60,7 +60,8 @@ Each interface has a **fake** (runs anywhere, for tests and local dev) and a **r
 | `ModelClient` | `FakeModel` (scripted replies) | `BedrockModel` | Loop tests are deterministic and free |
 | `MemoryClient` | `InMemoryMemory` | `AgentCoreMemory` | Agent works before the memory resource exists |
 | `TurnRunner` | `LocalTurnRunner` (in-process) | `LambdaTurnRunner` (async invoke) | "Move to Lambdas" is a swap, not a rewrite |
-| `Clock` | `FixedClock("2026-10-14")` | `SystemClock` | Dates like "the 15th" become testable |
+| `Clock` | `FixedClock.onDate("2026-10-14")` | `SystemClock(timeZone)` | Dates like "the 15th" become testable |
+| `BlobStore` | `InMemoryBlobStore` | `S3BlobStore` | Screenshot bytes without S3 (added in Track 0) |
 
 **The rule that makes "move to Lambda" easy:**
 
@@ -137,14 +138,17 @@ Track 0: CONTRACTS (sequential, first)
 You can't parallelize before this exists. Output:
 
 ```
-[ ] git init, npm workspaces, tsconfig, eslint, vitest set up
-[ ] packages/domain: entities, enums, zod schemas (Doc 3 §2)
-[ ] API contract: route list with request/response schemas (Doc 2 §4)
-[ ] Interfaces: Store, ModelClient, MemoryClient, TurnRunner, Clock
-[ ] InMemoryStore (~100 lines) + FixedClock
-[ ] fixtures/: starter-pack expected extractions + expected BillCheck results (answer key, §6)
-[ ] Empty packages with correct names and exports so imports resolve
+[x] npm workspaces, tsconfig, eslint (incl. max-lines 450), vitest set up. `npm run check` runs all three
+[x] packages/domain: entities, enums, zod schemas (Doc 3 §2). Changes vs Doc 3 listed in Doc 3 §10
+[x] API contract: route list with request/response schemas (Doc 2 §4) → domain/src/api/routes.ts
+[x] Interfaces: Store, ModelClient, MemoryClient, TurnRunner, Clock, BlobStore → domain/src/ports/
+[x] InMemoryStore + InMemoryBlobStore (packages/store) + FixedClock / SystemClock (domain)
+[x] fixtures/: starter-pack documents, expected helpers/terms/bills, answer key → @helper-assistant/fixtures
+[x] Empty packages with correct names and exports so imports resolve
+[x] All tracks' dependencies installed up front, so tracks don't fight over package-lock.json
 ```
+
+**Track 0 notes for track agents:** don't add dependencies without asking (the lockfile is shared). `InMemoryMemory` and `FakeModel` are Track B's. The full Store conformance suite is Track A's; Track 0 left only smoke tests.
 
 **After Track 0, `packages/domain` is frozen.** If a track needs a change, it goes through you. Contract drift is the number one way parallel work fails.
 
@@ -321,7 +325,7 @@ The oracle for the starter pack. If the app disagrees, the app is wrong (or my r
 |---|---|---|---|---|
 | **Priya** | $626 | $556 (or $596 with fee) | `DISCREPANCIES` | All 5 lines `MATCHES`. $40 fee `NOT_COVERED` (claim: "Sam said it's fine"). **Stated total ≠ sum of lines** ($626 vs $596) |
 | **Lupe** | $820 | $800 | `DISCREPANCIES` | Sep 1 and Sep 8: billed $150, expected $140 (`DIFFERS`). Sep 15, 22, 29 match |
-| **Theo** | $580 | $580 | `CHECKS_OUT` | 18 × $28 + 2 × $38 correct. Count of 20 walks `UNVERIFIABLE`. Plausibility note: 21 weekdays excluding Labor Day |
+| **Theo** | $580 | $580 | `CHECKS_OUT` | 18 × $28 + 2 × $38 correct (lines `MATCHES`). INFO findings: `QUANTITY_UNVERIFIABLE` (count of walks), `OCCURRENCE_COUNT_PLAUSIBILITY` 20 billed vs 22 weekdays (no holiday calendar; Theo's remark explains Labor Day) |
 
 **Line-level assertions (Priya):**
 
@@ -472,12 +476,13 @@ You're the review bottleneck. Stagger the gates.
 | 4 | `record_bill` without confirmation (A4) | Yes. Source shown beside extraction | 3 |
 | 5 | Exact Bedrock model ID, inference profile, region | Verify in console. Record in README | Side doc |
 | 6 | AgentCore Memory CDK construct and IAM action names | Verify in current docs at Track D | 2 |
+| 7 | Household time zone for `SystemClock` (what "today" is) | A deploy-time setting (e.g. `HOUSEHOLD_TIME_ZONE`), failing loudly if unset, like `APP_PASSWORD`. No invented default | 2 |
 
 ---
 
 ## 11. Keeping these docs alive
 
-Per your rule: when a decision changes, rename the doc to `_v1`, `_v2`, and write the new one as `_latest`. Always build from `_latest`.
+Only the `_latest` docs are kept, in `working_docs/`. Update them in place when a decision changes.
 
 | Doc | Update when |
 |---|---|
