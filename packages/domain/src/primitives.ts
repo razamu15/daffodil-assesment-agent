@@ -46,6 +46,17 @@ export type Cents = z.infer<typeof CentsSchema>;
 
 export const NonNegativeCentsSchema = CentsSchema.nonnegative();
 
+/**
+ * Identifies one service a helper provides ("standard", "date-night", "walk-30").
+ * Unique per helper, chosen when the first term for it is saved. Bill lines point
+ * at it to say which term prices them. Lowercase slug so keys compare exactly.
+ */
+export const ServiceKeySchema = z
+  .string()
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Expected a lowercase slug like date-night")
+  .describe("Service identifier for this helper, a lowercase slug like 'date-night'. Reuse the helper's existing keys");
+export type ServiceKey = z.infer<typeof ServiceKeySchema>;
+
 /** Short integer reference for a PendingAction (#7). Easier for the model to copy than a UUID. */
 export const ActionRefSchema = z.number().int().positive();
 export type ActionRef = z.infer<typeof ActionRefSchema>;

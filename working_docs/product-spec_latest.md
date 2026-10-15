@@ -67,9 +67,15 @@ Assistant checks each one
 This is **derived** from the data, not stored by hand.
 
 ```
-NOT_RECEIVED ──► RECEIVED ──► CHECKED: checks out ──► APPROVED
+NOT_RECEIVED ──► RECEIVED ──► CHECKED: checks out ──► APPROVED ──► PAID (Jordan marks it)
                                  │
-                                 └─► CHECKED: discrepancies ──► (asked helper) ──► new bill ──► RECEIVED ...
+                                 └─► CHECKED: discrepancies ──► (asked helper) ──┬─► new bill ──► RECEIVED ...
+                                                                                 └─► "it's correct" ──► APPROVED with exceptions
+```
+
+The stored bill status stays `RECEIVED` while it's flagged. "Flagged" comes from the latest check.
+
+```
 ```
 
 ### What Jordan sees: the Month screen
@@ -114,8 +120,15 @@ For a discrepancy or a missing bill, the assistant **drafts** a short, polite me
 
 > *"Hi Lupe, thanks for September's bill. Sep 1 and 8 show $150, but the new rate started Sep 15 (we had $140 before). Could you send a corrected total of $800? Thanks!"*
 
+**When it's resolved.** Two endings:
+- The helper sends a corrected bill. It replaces the old one and is checked again.
+- Jordan says "talked to Priya, the bill is correct." The assistant proposes approval with the flagged items as accepted exceptions, with Jordan's reason. Jordan confirms. If the talk changed the deal going forward (e.g. a $40 same-day fee), the assistant also proposes an agreement change.
+
 ### 4.6 Approve for payment
 Jordan clicks Approve and sees a confirm dialog: amount, who, how to pay, and any accepted exceptions. After confirming, the bill is locked.
+
+### 4.6a Mark as paid
+After paying through Venmo or Zelle, Jordan clicks **Mark as paid** on the approved bill (date, method, optional note). The app records it. The bill itself stays sealed. No confirm step: the click is Jordan's own statement.
 
 ### 4.7 Settle mid-month
 For a helper switch, Jordan says "Lupe's last day is Oct 14." The assistant proposes marking Lupe as ended on that date. After Jordan confirms, it expects a **final bill** for the partial period and can draft the request to Lupe. When the bill arrives, it's checked like any other.
@@ -137,9 +150,12 @@ Jordan can ask anything about the records: "What's Priya's Sunday rate?", "What 
 | P6 | **Mid-month settlement is supported** via partial periods and ended helpers | You asked for it. Real households switch helpers | Decided |
 | P7 | **Multiple chats** are saved and listable | Cheap, and it's an audit trail | Decided |
 | P8 | **Long-term memory is on**, for soft facts only | Brief requires memory across conversations | Decided |
-| P9 | **Approve with accepted exceptions** stays available as a secondary action | Jordan may know better than the bill (e.g. Sam really did OK the $40 fee). Without it, a flagged bill is stuck until the helper reissues | **[DECIDE]** |
-| P10 | **Corrected bills replace earlier ones.** A new bill for the same helper and period supersedes the old unapproved one. If the period is already approved, it's flagged, not applied | Real flow after "ask the helper" | **[DECIDE]** |
-| P11 | **Services rendered**: light plausibility checks only (§6) | Cheap, uses data we already hold | **[DECIDE]** |
+| P9 | **Approve with accepted exceptions** stays available as a secondary action | Jordan may know better than the bill (e.g. Sam really did OK the $40 fee). Without it, a flagged bill is stuck until the helper reissues | Decided |
+| P10 | **Corrected bills replace earlier ones.** A new bill for the same helper and period supersedes the old unapproved one. If the period is already approved, it's flagged, not applied | Real flow after "ask the helper" | Decided |
+| P11 | **Services rendered**: light plausibility checks only (§6) | Cheap, uses data we already hold | Decided |
+| P12 | **One user.** Whoever logs in can confirm and approve. No household members list | Multi-user is out of scope | Decided |
+| P13 | **Mark as paid** on approved bills | Jordan needs to see what's been paid | Decided |
+| P14 | **Helper profiles save without confirmation.** Terms, approvals, messages and engagement ends still need it | Gating name/phone edits was cumbersome | Decided |
 
 **On P9:** The brief says Jordan should be able to "approve a bill for payment." If P3 were the *only* path, Jordan couldn't approve a bill that has a known, acceptable exception. I'd keep a quiet secondary button: "Approve anyway…" with the exceptions listed and recorded in the approval.
 
@@ -179,7 +195,8 @@ You weren't sure. Here's the reasoning.
 | **Login** | One password |
 | **Month** (home) | Status of every helper's bill for the period. The "have they come?" view |
 | **Bill detail** | Line-by-line check, verdict, source side-by-side, Approve / Ask helper |
-| **Agreements** | Per helper: current terms, history, source links. Helper details (key, how to pay) |
+| **Agreements** | Per helper: current terms, history, source links. Helper details (key, how to pay), editable directly |
+| **Bills** | All bills by month, including approved and paid ones. Mark as paid from here |
 | **Assistant** (chat) | Paste, upload, ask. Pending cards appear inline. Chat list on the side |
 | **Decisions badge** | "3 things need you": pending confirmations |
 
@@ -197,7 +214,7 @@ This is what makes it feel safe with family money.
 - **Plain words, not codes.** "Billed $150, agreed $140."
 - **Approved bills look locked.** No edit controls render.
 - **It says what it can't know.** "I can't verify the number of walks."
-- **Nothing is silent.** Every save, approve, or message goes through a confirm step Jordan sees.
+- **Nothing is silent.** Every agreement change, approval, message, or engagement end goes through a confirm step Jordan sees. Helper profile edits save directly but are always visible.
 
 ---
 

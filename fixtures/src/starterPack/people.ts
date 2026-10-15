@@ -1,18 +1,11 @@
 /**
- * Expected household and helpers after Jordan confirms everything in the starter pack.
+ * Expected household and helpers after the starter pack is loaded. Helper
+ * profiles are saved directly (not gated); only terms need confirmation.
  *
  * Note the S4 rule in action: only Lupe "has a key" in the notes, so Priya and
  * Theo are UNKNOWN, not NO_KEY.
  */
-import {
-  BillingCadence,
-  ContactChannel,
-  HelperRole,
-  HelperStatus,
-  HouseKeyAccess,
-  PaymentMethod,
-  PrincipalRole,
-} from "@helper-assistant/domain";
+import { BillingCadence, ContactChannel, HelperStatus, HouseKeyAccess, PaymentMethod } from "@helper-assistant/domain";
 import type { Helper, Household } from "@helper-assistant/domain";
 
 export const helperIds = {
@@ -23,10 +16,6 @@ export const helperIds = {
 
 export const starterPackHousehold: Household = {
   householdId: "household-rivera",
-  principals: [
-    { personId: "person-jordan", name: "Jordan", role: PrincipalRole.DECISION_MAKER },
-    { personId: "person-sam", name: "Sam", role: PrincipalRole.PARTNER },
-  ],
   billingPolicy: { cadence: BillingCadence.MONTHLY_IN_ARREARS, expectedByDayOfMonth: null },
   version: 1,
 };
@@ -35,7 +24,7 @@ export const starterPackHelpers: Helper[] = [
   {
     helperId: helperIds.priya,
     name: "Priya",
-    role: HelperRole.BABYSITTER,
+    role: "babysitter",
     status: HelperStatus.ACTIVE,
     startedOn: null,
     endedOn: null,
@@ -48,7 +37,7 @@ export const starterPackHelpers: Helper[] = [
   {
     helperId: helperIds.lupe,
     name: "Lupe",
-    role: HelperRole.CLEANER,
+    role: "cleaner",
     status: HelperStatus.ACTIVE,
     startedOn: null,
     endedOn: null,
@@ -61,7 +50,7 @@ export const starterPackHelpers: Helper[] = [
   {
     helperId: helperIds.theo,
     name: "Theo",
-    role: HelperRole.DOG_WALKER,
+    role: "dog walker",
     status: HelperStatus.ACTIVE,
     startedOn: null,
     endedOn: null,

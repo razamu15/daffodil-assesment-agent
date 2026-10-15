@@ -131,6 +131,7 @@ UI ─ POST /api/bills/:id/approve {acceptedExceptions[]} ─► API Lambda
 | `POST /api/documents` | Upload a screenshot or paste | token |
 | `GET /api/documents/:id` | Source document (+ image bytes) for "source beside extraction" | token |
 | `GET /api/helpers` | Helpers and key/payment info | token |
+| `POST /api/helpers`, `POST /api/helpers/:id` | Create / edit a helper profile (not gated) | token |
 | `GET /api/terms?helperId=` | Agreement terms and history | token |
 | `GET /api/bills`, `GET /api/bills/:id` | Bills and checks | token |
 | `GET /api/month-status?month=` | Derived status (plain code) | token |
@@ -138,6 +139,7 @@ UI ─ POST /api/bills/:id/approve {acceptedExceptions[]} ─► API Lambda
 | `POST /api/actions/:ref/confirm` | **The commit** | token |
 | `POST /api/actions/:ref/reject` | Reject | token |
 | `POST /api/bills/:id/approve` | Approve button | token |
+| `POST /api/bills/:id/payment` | Mark an approved bill as paid (records it; moves no money) | token |
 | `GET /api/messages?helperId=` | Drafted messages to copy | token |
 | `POST /api/messages/:id/handed-off` | "I sent it" | token |
 
@@ -162,6 +164,7 @@ ACTION#<ref zero-padded>                    PendingAction
 MSG#<createdAt>#<messageId>                 OutboundMessage
 NOTE#<noteId>                               HelperNote
 DOC#<docId>                                 SourceDocument
+PAY#<paymentId>                             PaymentRecord
 SESSION#<sessionId>                         Session (holds activeTurnId lock)
 TURN#<turnId>                               Turn trace (sessionId as an attribute; GET /api/turns/:id has only the id)
 COUNTER#<name>                              atomic counters (action refs)

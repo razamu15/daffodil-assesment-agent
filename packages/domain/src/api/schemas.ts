@@ -3,12 +3,13 @@
  * Used by api (validation at the boundary), web (typed client) and the mock server.
  */
 import { z } from "zod";
-import { DocumentKindSchema, DocumentStorage, ImageMediaTypeSchema } from "../enums";
+import { DocumentKindSchema, DocumentStorage, ImageMediaTypeSchema, PaymentMethodSchema } from "../enums";
 import { AgreementTermSchema } from "../entities/agreement";
 import { AcceptedExceptionSchema, BillSchema } from "../entities/bill";
 import { SourceDocumentSchema } from "../entities/document";
 import { PendingActionSchema } from "../entities/action";
-import { HelperSchema } from "../entities/people";
+import { HelperProfileSchema, HelperSchema } from "../entities/people";
+import { PaymentRecordSchema } from "../entities/payment";
 import {
   ChatMessageSchema,
   HelperNoteSchema,
@@ -32,6 +33,8 @@ export const ApiErrorCodeSchema = z.enum([
   "ACTION_NOT_PENDING",
   /** Approve on a bill that isn't RECEIVED (approved or superseded). */
   "BILL_NOT_APPROVABLE",
+  /** Mark-paid on a bill that isn't APPROVED, or is already paid. */
+  "BILL_NOT_PAYABLE",
   "INTERNAL",
 ]);
 export const ApiErrorCode = ApiErrorCodeSchema.enum;
@@ -45,6 +48,7 @@ export const API_ERROR_HTTP_STATUS: Record<ApiErrorCode, number> = {
   SESSION_BUSY: 409,
   ACTION_NOT_PENDING: 409,
   BILL_NOT_APPROVABLE: 409,
+  BILL_NOT_PAYABLE: 409,
   INTERNAL: 500,
 };
 
@@ -117,6 +121,15 @@ export const DocumentResponseSchema = z.object({
 
 export const HelpersResponseSchema = z.object({ helpers: z.array(HelperSchema) });
 
+/** Helper profile edits save directly (not gated). */
+export const CreateHelperRequestSchema = z.object({ profile: HelperProfileSchema });
+export const UpdateHelperRequestSchema = z.object({
+  /** The version the user edited. Mismatch → CONFLICT. */
+  helperVersion: VersionSchema,
+  profile: HelperProfileSchema,
+});
+export const HelperResponseSchema = z.object({ helper: HelperSchema });
+
 export const TermsResponseSchema = z.object({
   /** All versions, current and historical, ordered by effectiveFrom. */
   terms: z.array(AgreementTermSchema),
@@ -125,13 +138,18 @@ export const TermsResponseSchema = z.object({
   documents: z.array(SourceDocumentSchema),
 });
 
-export const BillsResponseSchema = z.object({ bills: z.array(BillSchema) });
+export const BillsResponseSchema = z.object({
+  bills: z.array(BillSchema),
+  /** Payment records for the listed bills (approved and paid). */
+  payments: z.array(PaymentRecordSchema),
+});
 
 export const BillResponseSchema = z.object({
   bill: BillSchema,
   /** Terms referenced by the latest check, for "why this number". */
   terms: z.array(AgreementTermSchema),
   sourceDocument: SourceDocumentSchema,
+  payment: PaymentRecordSchema.nullable(),
 });
 
 export const ActionsResponseSchema = z.object({ actions: z.array(PendingActionSchema) });
@@ -157,6 +175,14 @@ export const ApproveBillRequestSchema = z.object({
   acceptedExceptions: z.array(AcceptedExceptionSchema),
 });
 export const ApproveBillResponseSchema = z.object({ bill: BillSchema, action: PendingActionSchema });
+
+/** "Mark as paid" on an approved bill. Records Jordan's statement; moves no money. */
+export const RecordPaymentRequestSchema = z.object({
+  paidOn: LocalDateSchema,
+  method: PaymentMethodSchema,
+  note: z.string().nullable(),
+});
+export const RecordPaymentResponseSchema = z.object({ payment: PaymentRecordSchema });
 
 export const MessageHandedOffResponseSchema = z.object({ message: OutboundMessageSchema });
 

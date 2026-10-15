@@ -4,14 +4,14 @@
  * on every read. Never stored, so no scheduler is needed to keep it fresh.
  */
 import { z } from "zod";
-import { BillingPeriodStateSchema, BillVerdictSchema, HelperRoleSchema, HelperStatusSchema } from "../enums";
+import { BillingPeriodStateSchema, BillVerdictSchema, HelperStatusSchema } from "../enums";
 import { CentsSchema, IdSchema, InstantSchema, LocalDateSchema, MonthKeySchema } from "../primitives";
 import { BillingPeriodSchema } from "./bill";
 
 export const MonthStatusRowSchema = z.object({
   helperId: IdSchema,
   helperName: z.string(),
-  role: HelperRoleSchema,
+  role: z.string(),
   helperStatus: HelperStatusSchema,
   /** The period expected from this helper: the calendar month, or a FINAL_SETTLEMENT range if they ended in it. */
   period: BillingPeriodSchema,
@@ -24,6 +24,8 @@ export const MonthStatusRowSchema = z.object({
   attentionCount: z.number().int().nonnegative(),
   /** Most recent message about this period that Jordan handed off ("asked helper on …"). */
   askedHelperAt: InstantSchema.nullable(),
+  /** Date Jordan recorded paying the approved bill (state PAID). */
+  paidOn: LocalDateSchema.nullable(),
 });
 export type MonthStatusRow = z.infer<typeof MonthStatusRowSchema>;
 

@@ -29,6 +29,11 @@ The fixture bills have `latestCheck: null`. Fill `BillCheck` values in the mock 
 
 **USE FAKES FOR:** the whole backend. The mock API is the only fake. No `fetch` to a real server until I1.
 
+**ALSO (decided after Track 0, see product-spec P12–P14):**
+- A **Bills** list by month, including approved and paid bills, with a **Mark as paid** form (date, method, note) on approved bills.
+- Helper details are editable directly on the Agreements screen (no confirm card).
+- No household members anywhere: one user.
+
 **DONE WHEN:**
 ```
 npm run dev -w apps/web      # scenario switcher in the corner; all six scenarios click through

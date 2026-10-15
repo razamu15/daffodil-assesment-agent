@@ -23,7 +23,7 @@ Written for: Saad. Doc 4 of 4. The product, system, and agent parts live in Docs
 | Long-term memory | On (preference + semantic strategies) | 3 |
 | Chats | Multiple, stored | 1 |
 | Approve flow | Validate → ask helper if off → approve for payment (no money moves) | 1 |
-| Auth | Deploy-time password, API-checked token. Simpler options listed | 3 §9 |
+| Auth | Deploy-time password, stateless signed token checked by the API (option 1) | 3 §9 |
 | Scheduling | None. Month status runs on app open | 1 |
 | Messages | Drafted and handed off, never sent | 1 |
 
@@ -462,7 +462,7 @@ You're the review bottleneck. Stagger the gates.
 | 6 | A claim ("Sam said it's fine") isn't an agreement | Needs Jordan's explicit acceptance |
 | 7 | Line items are the source of truth over a stated total | Totals are derived |
 | 8 | A corrected bill supersedes an earlier unapproved bill | Natural result of "ask the helper" |
-| 9 | One user, one household | Out of scope per brief |
+| 9 | One user, one household. Whoever logs in decides | Out of scope per brief |
 
 ---
 
@@ -470,10 +470,10 @@ You're the review bottleneck. Stagger the gates.
 
 | # | Decision | My recommendation | Doc |
 |---|---|---|---|
-| 1 | Keep "Approve anyway with exceptions" (P9 / A1) | Yes, as a quiet secondary action | 1, 3 |
-| 2 | Plausibility notes from schedules (P11 / A2) | Yes, informational only | 1, 3 |
-| 3 | Supersede rule for corrected bills (P10 / A3) | As written | 1, 3 |
-| 4 | `record_bill` without confirmation (A4) | Yes. Source shown beside extraction | 3 |
+| 1 | Keep "Approve anyway with exceptions" (P9 / A1) | **Decided: yes** | 1, 3 |
+| 2 | Plausibility notes from schedules (P11 / A2) | **Decided: yes** | 1, 3 |
+| 3 | Supersede rule for corrected bills (P10 / A3) | **Decided: yes** | 1, 3 |
+| 4 | `record_bill` without confirmation (A4) | **Decided: yes.** It runs the checker on save | 3 |
 | 5 | Exact Bedrock model ID, inference profile, region | Verify in console. Record in README | Side doc |
 | 6 | AgentCore Memory CDK construct and IAM action names | Verify in current docs at Track D | 2 |
 | 7 | Household time zone for `SystemClock` (what "today" is) | A deploy-time setting (e.g. `HOUSEHOLD_TIME_ZONE`), failing loudly if unset, like `APP_PASSWORD`. No invented default | 2 |

@@ -1,6 +1,9 @@
 /**
  * Household and Helper (Doc 3 §2.3).
  *
+ * One household, one user: whoever logs in decides. There is no list of people
+ * in the household.
+ *
  * Payment and contact live on the Helper because they are facts about the person,
  * not about a deal. A helper is never deleted; an engagement ends (status ENDED).
  */
@@ -8,20 +11,11 @@ import { z } from "zod";
 import {
   BillingCadenceSchema,
   ContactChannelSchema,
-  HelperRoleSchema,
   HelperStatusSchema,
   HouseKeyAccessSchema,
   PaymentMethodSchema,
-  PrincipalRoleSchema,
 } from "../enums";
 import { IdSchema, LocalDateSchema, VersionSchema } from "../primitives";
-
-export const PrincipalSchema = z.object({
-  personId: IdSchema,
-  name: z.string().min(1),
-  role: PrincipalRoleSchema,
-});
-export type Principal = z.infer<typeof PrincipalSchema>;
 
 export const BillingPolicySchema = z.object({
   cadence: BillingCadenceSchema,
@@ -32,8 +26,6 @@ export type BillingPolicy = z.infer<typeof BillingPolicySchema>;
 
 export const HouseholdSchema = z.object({
   householdId: IdSchema,
-  /** People who can agree to things. Lets a claim like "Sam said it's fine" point at someone. */
-  principals: z.array(PrincipalSchema),
   billingPolicy: BillingPolicySchema,
   version: VersionSchema,
 });
@@ -52,10 +44,11 @@ export const ContactInfoSchema = z.object({
 });
 export type ContactInfo = z.infer<typeof ContactInfoSchema>;
 
-/** The editable facts about a helper. Carried by HELPER_PROFILE_CHANGE proposals. */
+/** The editable facts about a helper. Saved directly (no confirmation step), by the save_helper tool or the UI. */
 export const HelperProfileSchema = z.object({
   name: z.string().min(1),
-  role: HelperRoleSchema,
+  /** What they do, in plain words: "babysitter", "cleaner", "tutor". Free text; no logic depends on it. */
+  role: z.string().min(1),
   houseKeyAccess: HouseKeyAccessSchema,
   payment: PaymentInfoSchema,
   contact: ContactInfoSchema,

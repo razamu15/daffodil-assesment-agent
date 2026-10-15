@@ -25,7 +25,7 @@ import { ExtractedLineItemSchema } from "./extraction";
 export const ToolCategory = {
   /** No side effects. */
   READ: "READ",
-  /** Writes what a helper claimed (a bill). Never money or terms. */
+  /** Writes facts that need no confirmation: a helper's profile, or what a helper claimed (a bill). Never money or terms. */
   RECORD: "RECORD",
   /** Writes a PENDING action. Nothing real changes until Jordan confirms. */
   PROPOSE: "PROPOSE",
@@ -50,6 +50,9 @@ export const toolInputSchemas = {
   extract_from_document: z.object({ docId: IdSchema, extractionKind: ExtractionKindSchema }),
 
   // RECORD
+  /** helperId null = create a new helper. Saved immediately; profile edits aren't gated. */
+  save_helper: z.object({ helperId: IdSchema.nullable(), profile: HelperProfileSchema }),
+  /** Saves the bill and runs checkBill on it in the same call: a bill is never stored unchecked. */
   record_bill: z.object({
     docId: IdSchema,
     helperId: IdSchema,
@@ -61,10 +64,12 @@ export const toolInputSchemas = {
   }),
 
   // PROPOSE
-  /** helperId null = create a new helper. */
-  propose_helper_profile: z.object({ helperId: IdSchema.nullable(), profile: HelperProfileSchema, sourceDocId: IdSchema.nullable() }),
   /** The helper is identified by change.term.helperId, or by change.termId for END_TERM. */
   propose_agreement_change: z.object({ change: AgreementChangePayloadSchema, sourceDocId: IdSchema.nullable() }),
+  /**
+   * Also the path after a discrepancy is resolved outside the app ("talked to Priya, the
+   * fee is fine"): accept the flagged lines/findings with Jordan's reason, then Jordan confirms.
+   */
   propose_bill_approval: z.object({ billId: IdSchema, acceptedExceptions: z.array(AcceptedExceptionSchema) }),
   propose_helper_message: z.object({
     helperId: IdSchema,
@@ -93,8 +98,8 @@ export const TOOL_CATEGORY: Record<ToolName, ToolCategory> = {
   get_month_status: ToolCategory.READ,
   list_pending_actions: ToolCategory.READ,
   extract_from_document: ToolCategory.READ,
+  save_helper: ToolCategory.RECORD,
   record_bill: ToolCategory.RECORD,
-  propose_helper_profile: ToolCategory.PROPOSE,
   propose_agreement_change: ToolCategory.PROPOSE,
   propose_bill_approval: ToolCategory.PROPOSE,
   propose_helper_message: ToolCategory.PROPOSE,

@@ -4,10 +4,9 @@ import {
   AgreementExtractionSchema,
   BillExtractionSchema,
   FixedClock,
-  ServiceKind,
+  ServiceKeySchema,
   SystemClock,
   apiRoutes,
-  termSlot,
   toolInputSchemas,
   TOOL_CATEGORY,
 } from "../src/index";
@@ -41,11 +40,11 @@ describe("api routes", () => {
   });
 });
 
-describe("termSlot", () => {
-  it("uses the kind for known services and the label for OTHER", () => {
-    expect(termSlot(ServiceKind.CLEANING_REGULAR, "Regular cleaning")).toBe("CLEANING_REGULAR");
-    expect(termSlot(ServiceKind.OTHER, " Tutoring ")).toBe(termSlot(ServiceKind.OTHER, "tutoring"));
-    expect(termSlot(ServiceKind.OTHER, "Tutoring")).not.toBe(termSlot(ServiceKind.OTHER, "Test prep"));
+describe("ServiceKeySchema", () => {
+  it("accepts lowercase slugs only, so keys compare exactly", () => {
+    expect(ServiceKeySchema.safeParse("date-night").success).toBe(true);
+    expect(ServiceKeySchema.safeParse("tutoring").success).toBe(true);
+    for (const bad of ["Date night", "date_night", "-x", "x-", ""]) expect(ServiceKeySchema.safeParse(bad).success).toBe(false);
   });
 });
 

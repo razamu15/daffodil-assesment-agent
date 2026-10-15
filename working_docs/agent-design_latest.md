@@ -63,16 +63,16 @@ Format: **fields** → *why this shape* → *what we passed on*.
 
 #### Household
 ```
-householdId, principals[{personId, name, role: DECISION_MAKER | PARTNER}],
+householdId,
 billingPolicy { cadence: MONTHLY_IN_ARREARS, expectedByDayOfMonth: number | null }
 ```
-- *Why:* "We pay at the start of the month for the previous month" is a household rule, not a helper rule. Sam is a person who can agree to things, so claims like "Sam said it's fine" have someone to point at.
+- *Why:* "We pay at the start of the month for the previous month" is a household rule, not a helper rule. One user: whoever logs in decides. There is no list of people in the household.
 - *Passed on:* hardcoding the rhythm as constants. It hides a domain rule. Only one row exists today, but it's cheap to model.
 - `expectedByDayOfMonth` is `null` until Jordan says. We don't invent a due date (S4).
 
 #### Helper
 ```
-helperId, name, role: BABYSITTER | CLEANER | DOG_WALKER,
+helperId, name, role (free text: "babysitter", "tutor"),
 status: ACTIVE | ENDED, startedOn?, endedOn?,
 houseKeyAccess: HAS_KEY | NO_KEY | UNKNOWN,
 payment { method: VENMO | ZELLE | UNKNOWN, handle? },
@@ -80,7 +80,8 @@ contact { channel: SMS | EMAIL | UNKNOWN, handle? },
 notes, version
 ```
 - *Why `houseKeyAccess` is a 3-value enum:* the notes only say Lupe has a key. For Priya and Theo we don't know, so `UNKNOWN`, **not** `NO_KEY` (S4). It also drives behavior: when Jordan ends Lupe's engagement, the assistant reminds *"Lupe has a key."*
-- *Why `role` is an enum:* it decides which service kinds are valid, and it isn't free text.
+- *Why `role` is free text:* no logic depends on it, and unseen helper types (a tutor) must be recordable without a code change.
+- *Profile edits are not gated.* The agent saves them with `save_helper`; the UI edits them directly. Only terms, approvals, messages and engagement ends need confirmation.
 - *Why `status` and `endedOn`:* mid-month settlement (Product §4.7). A helper is never deleted; they end.
 - *Why payment and contact live here:* they're facts about the person, not about a deal.
 - *Passed on:* a free-form `attributes` map. It can't drive any behavior, and typos become new fields.
@@ -98,13 +99,14 @@ content (S3 key or text), messageDate?, receivedAt, sessionId, messageId
 
 #### AgreementTerm
 ```
-termId, helperId, serviceKind, serviceLabel, pricingRules[], schedule,
+termId, helperId, serviceKey, serviceLabel, pricingRules[], schedule,
 effectiveFrom, effectiveTo | null,
 sourceDocId, sourceQuote, assumptions[],
 supersedesTermId | null, createdByActionRef
 ```
 - *Why versioned rows (S1):* a rate change **closes** the old row and **adds** a new one. Bills are checked against the term in effect *on each line's date*.
-- *Why one term per `serviceKind`:* Lupe's regular visit changed and her deep clean didn't. They move independently.
+- *Why `serviceKey` (a per-helper slug like `date-night`), not a global enum:* new helper types bring new services. The key only has to match between a term and a bill line. Extraction is given the helper's existing keys so it reuses them.
+- *Why one term per `serviceKey`:* Lupe's regular visit changed and her deep clean didn't. They move independently.
 - *Why `sourceQuote` and `assumptions[]`:* every number can show its "why". "Assumed Sep 15" is data, not a hidden guess.
 - *Passed on:* one overwritten "rate card" per helper (S1a), and a term-per-helper-type table.
 - Future-dated rows are legal (the vacation case).
@@ -142,11 +144,12 @@ latestCheck, approval?, version
 - *Why `statedTotal` is stored but never trusted:* it's what the helper wrote. We compare it with the sum of lines. Priya's $626 vs $596 is exactly this.
 - *Why LineItems are embedded (S2):* they don't exist outside a bill, and the approval snapshot wants them together.
 - *Why `SUPERSEDED`:* after "ask the helper," a corrected bill arrives. We keep the old one for the record.
-- *Passed on:* a separate `Payment` or `Invoice` model. We don't pay, so there's nothing to model.
+- *Status with discrepancies:* stays `RECEIVED`. "Flagged" is the verdict on `latestCheck`, shown as `CHECKED_FLAGGED` in month status. It leaves `RECEIVED` only by approval (→ `APPROVED`) or a corrected bill (→ `SUPERSEDED`).
+- *Passed on:* an `Invoice` model.
 
 #### LineItem (embedded in Bill)
 ```
-lineId, serviceKind, label,
+lineId, serviceKey, label,
 startAt?, endAt?        // household-local datetimes, no timezone
 quantity?, unit?,
 amountBilled,
@@ -160,18 +163,26 @@ authorizationClaim? { claimedApprover, text }
 
 #### Approval (sealed inside Bill)
 ```
-approvedAt, approvedBy: JORDAN, viaActionRef,
+approvedAt, approvedBy: USER_UI, viaActionRef,
 billedAmount, amountApproved,
 acceptedExceptions[{ lineId | flagKind, reason }],
 checkSnapshot, termVersionIds[]
 ```
 - *Why a snapshot (S6):* what Jordan saw is what's recorded, even if terms change next year.
 - *Why it's inside the Bill:* one conditional write flips `RECEIVED → APPROVED` and writes the approval together. After that, no update path exists.
-- *Passed on:* a separate `Payment` table (we don't pay), and mutable "approved" flags.
+- *Passed on:* mutable "approved" flags.
+
+#### PaymentRecord
+```
+paymentId, billId, helperId, amountCents, paidOn, method, note, recordedAt
+```
+- *Why:* Jordan pays outside the app, then clicks "Mark as paid". This records that statement. It moves no money.
+- *Why separate from the Bill:* the approved bill is sealed. Paid is a new fact, not an edit.
+- *Not gated:* the click is Jordan's own statement. One per bill.
 
 #### PendingAction
 ```
-ref (short int), type: HELPER_PROFILE_CHANGE | AGREEMENT_CHANGE | BILL_APPROVAL | HELPER_MESSAGE | HELPER_ENGAGEMENT_END,
+ref (short int), type: AGREEMENT_CHANGE | BILL_APPROVAL | HELPER_MESSAGE | HELPER_ENGAGEMENT_END,
 targetKey, payload (snapshot), basedOn (ActionBasis union, see §10),
 status: PENDING | CONFIRMED | REJECTED | WITHDRAWN | SUPERSEDED | STALE | EXPIRED,
 supersededByRef?, createdAt, resolvedAt, resolvedBy: USER_UI | SYSTEM,
@@ -213,7 +224,7 @@ Turn    { turnId, sessionId, status, toolCalls[], modelCalls[], tokens, error, s
 #### BillingPeriodStatus (derived, not stored)
 ```
 for each ACTIVE (or just-ended) helper × period:
-  NOT_RECEIVED | RECEIVED | CHECKED_OK | CHECKED_FLAGGED | APPROVED
+  NOT_RECEIVED | RECEIVED | CHECKED_OK | CHECKED_NEEDS_INFO | CHECKED_FLAGGED | APPROVED | PAID
   + "asked helper on <date>" if an OutboundMessage exists
 ```
 - *Why derived (S5):* it comes from bills, helpers, policy and messages. With no scheduler, nothing would keep a stored copy fresh.
@@ -222,18 +233,12 @@ for each ACTIVE (or just-ended) helper × period:
 
 ```
 HelperRole, HelperStatus, HouseKeyAccess, PaymentMethod, ContactChannel,
-ServiceKind, PricingRuleKind, ScheduleKind, BillStatus, BillPeriodKind,
+PricingRuleKind, ScheduleKind, BillStatus, BillPeriodKind,
 LineKind, LineStatus, BillVerdict, PendingActionType, PendingActionStatus,
 MessageReason, MessageStatus, DocumentKind
 ```
 
-```
-ServiceKind: BABYSITTING_STANDARD | BABYSITTING_DATE_NIGHT
-           | CLEANING_REGULAR | CLEANING_DEEP
-           | DOG_WALK_30 | DOG_WALK_60 | OTHER   (OTHER is identified by serviceLabel)
-```
-
-New helper types and service kinds are added here, in one place.
+Helper role and service are **not** enums: role is free text and services are per-helper `serviceKey` slugs. No logic branches on them, and unseen helper types must work without a code change.
 
 ---
 
@@ -347,15 +352,15 @@ Guidance only. **Not** the safety layer (cheatsheet §7.1).
 
 | Tool | Notes |
 |---|---|
-| `record_bill(extraction)` | Saves a `RECEIVED` bill. Supersedes an earlier unapproved bill for the same helper and period. Never touches an approved one |
+| `save_helper(helperId?, profile)` | Create or update a helper's profile. Not gated |
+| `record_bill(extraction)` | Saves a `RECEIVED` bill **and runs `checkBill` on it**, so discrepancies are flagged on arrival. Supersedes an earlier unapproved bill for the same helper and period. Never touches an approved one |
 
 **Propose (writes a `PENDING` row, nothing real changes):**
 
 | Tool | Notes |
 |---|---|
-| `propose_helper_profile(helperId?, profile)` | Create or update a helper (name, role, key, payment, contact). Gated like terms |
 | `propose_agreement_change(...)` | Returns `needs_decision` with conflicts when the target key clashes |
-| `propose_bill_approval(billId, acceptedExceptions[])` | Snapshots the current check and term versions |
+| `propose_bill_approval(billId, acceptedExceptions[])` | Snapshots the current check and term versions. Also used after a discrepancy is settled outside the app ("talked to Priya, the bill is correct"): the flagged items become accepted exceptions with Jordan's reason |
 | `propose_helper_message(helperId, reason, body)` | Draft. Jordan edits and confirms |
 | `propose_engagement_end(helperId, endedOn)` | Settlement. Returns the key reminder if `HAS_KEY` |
 | `withdraw_pending_action(ref)` | Safe: only reduces what could happen |
@@ -495,10 +500,10 @@ Layout details are in Doc 4 §2. Principles from your standing rules:
 
 | # | Decision | My recommendation |
 |---|---|---|
-| A1 | Keep "Approve anyway with exceptions" (Product P9) | Yes. Quiet secondary action |
-| A2 | Keep `ServiceSchedule` plausibility notes (Product P11, option B) | Yes. Informational only |
-| A3 | Corrected-bill supersede rule (Product P10) | As described in §4.3 |
-| A4 | `record_bill` needs no confirmation (it records what the helper said, not what was agreed). The UI shows source beside extraction so Jordan can correct it | Yes. If you'd rather gate it, it becomes a fifth `PendingActionType` |
+| A1 | Keep "Approve anyway with exceptions" (Product P9) | **Decided: yes.** Quiet secondary action |
+| A2 | Keep `ServiceSchedule` plausibility notes (Product P11, option B) | **Decided: yes.** Informational only |
+| A3 | Corrected-bill supersede rule (Product P10) | **Decided: yes**, as described in §4.3 |
+| A4 | `record_bill` needs no confirmation | **Decided: yes.** It runs the checker on save, so a bad bill is flagged anyway |
 
 ---
 
@@ -539,16 +544,18 @@ Track 0 turned §2 to §4 into zod schemas. Where the doc was ambiguous or misse
 |---|---|---|
 | C1 | `AgreementTerm.pricingRules[]` (was one `pricingRule`). A term's price is the composition of its rules | Priya's standard rate is HOURLY + HOURLY_AFTER + DAY_MULTIPLIER for one service kind. One term per service kind stays true. Composition rules are documented in `entities/agreement.ts` |
 | C2 | `DAY_MULTIPLIER.appliesTo: BASE_RATE \| ALL_HOURLY_RATES \| UNSPECIFIED` | "Time and a half" doesn't say whether the late rate is multiplied. UNSPECIFIED is honest; the checker computes where readings agree |
-| C3 | `HelperRole.OTHER`, `ServiceKind.OTHER` + required `serviceLabel`, `PaymentMethod.OTHER` | Unseen-input drill (a tutor). Without these the agent couldn't record a new helper type at all. OTHER services are keyed by label (`termSlot`) |
+| C3 | **Revised:** helper `role` is free text; services are per-helper `serviceKey` slugs (term ↔ bill line), replacing the `HelperRole` and `ServiceKind` enums. `PaymentMethod.OTHER` added | Unseen helper types are expected. No logic branches on role or service. Risk: near-duplicate keys; mitigated by giving extraction the helper's existing keys and validating keys at `record_bill` |
 | C4 | Money is integer cents everywhere, including tool and extraction schemas (`*Cents` fields) | One representation, no float math |
-| C5 | New `PendingActionType.HELPER_PROFILE_CHANGE` and tool `propose_helper_profile` | The app starts empty, and nothing else could create a helper through the gate |
-| C6 | `basedOnVersion` → `basedOn: ActionBasis` (NEW_ENTITY, HELPER_VERSION, BILL_VERSION, TERM_SLOT, NONE) | A term change is based on "the term in this slot", not a single row version. Explicit kinds, no inferring from null |
-| C7 | LineItem gains `serviceDate`, `unitPriceBilledCents`, `relatedLineId`, `sourceQuote`; `serviceKind` nullable; `LineKind.REIMBURSEMENT` | Lupe's lines have dates but no times. Theo states unit prices. Priya's fee hangs off a visit. Unknown service stays null |
+| C5 | **Revised:** helper profiles are saved directly (tool `save_helper`, routes `POST /api/helpers`, `POST /api/helpers/:id`). No confirmation | Gating profile edits was cumbersome. Terms, approvals, messages and engagement ends stay gated |
+| C6 | `basedOnVersion` → `basedOn: ActionBasis` (HELPER_VERSION, BILL_VERSION, TERM_SLOT, NONE) | A term change is based on "the term in this slot", not a single row version. Explicit kinds, no inferring from null |
+| C7 | LineItem gains `serviceDate`, `unitPriceBilledCents`, `relatedLineId`, `sourceQuote`; `serviceKey` nullable; `LineKind.REIMBURSEMENT` | Lupe's lines have dates but no times. Theo states unit prices. Priya's fee hangs off a visit. Unknown service stays null |
 | C8 | BillCheck: typed `findings[]` union, severity tables (`LINE_STATUS_SEVERITY`, `BILL_FINDING_SEVERITY`, `VERDICT_BY_WORST_SEVERITY`), `agreedTotalCents` | §3.3 verdict table as data. "Expected total" ($556 for Priya) has a name |
 | C9 | Theo: lines `MATCHES`; `QUANTITY_UNVERIFIABLE` + `OCCURRENCE_COUNT_PLAUSIBILITY` (20 billed vs **22** weekdays) as INFO findings | A line can't be both "rate correct" and "unverifiable". No holiday calendar exists, so the count is 22, not 21; the bill's own remark explains Labor Day |
 | C10 | `BillingPeriodState.CHECKED_NEEDS_INFO` | NEEDS_INFO is not "flagged" and not "ok" |
 | C11 | `HelperNote.noteKind: UNENCODED_TERM \| REVIEW_FLAG` + `billId` | `flag_for_review` needs somewhere to persist |
 | C12 | Bill: `helperRemarks[]`, `supersededByBillId`, nullable `statedTotalCents` | "No walk on Labor Day" is worth keeping. Some bills state no total |
-| C13 | `Approval.approvedBy: ActionResolver` (USER_UI), not `JORDAN` | One password; we can't know which person clicked |
+| C13 | `Approval.approvedBy: ActionResolver` (USER_UI), not `JORDAN`. Household has no list of people | Single user: whoever logs in decides |
 | C14 | `DocumentKind.CHAT_STATEMENT` | "Lupe goes to $150 on the 15th" typed in chat is a source too |
 | C15 | Extraction names helpers by name; the agent maps names → ids. Bill extraction lines use `relatedLineIndex` | The quarantined call has no ids |
+| C16 | `PaymentRecord` entity, route `POST /api/bills/:id/payment`, month state `PAID` | Jordan can mark an approved bill as paid without editing the sealed bill |
+| C17 | `record_bill` runs `checkBill` before returning | A bill is never stored unchecked |

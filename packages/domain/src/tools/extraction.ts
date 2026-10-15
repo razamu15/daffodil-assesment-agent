@@ -4,22 +4,24 @@
  * once, at that boundary; downstream code trusts the result.
  *
  * Extraction names helpers by name (it has no ids). The agent maps names to
- * helperIds and turns the result into propose_* / record_bill calls.
+ * helperIds and turns the result into save_helper / propose_* / record_bill calls.
+ * The call is given each known helper's existing serviceKeys, so terms and bill
+ * lines reuse them instead of inventing near-duplicates ("date-night" vs "datenight").
  *
  * Missing stays missing: every field the source doesn't state is null, and
  * every inference is written into an `assumptions` list.
  */
 import { z } from "zod";
-import { HelperRoleSchema, HouseKeyAccessSchema, ServiceKindSchema } from "../enums";
+import { HouseKeyAccessSchema } from "../enums";
 import { PricingRuleSchema, ServiceScheduleSchema } from "../entities/agreement";
 import { LineItemDraftSchema } from "../entities/bill";
 import { ContactInfoSchema, PaymentInfoSchema } from "../entities/people";
-import { CentsSchema, LocalDateSchema } from "../primitives";
+import { CentsSchema, LocalDateSchema, ServiceKeySchema } from "../primitives";
 
 export const ExtractedHelperSchema = z.object({
   name: z.string().min(1),
-  /** null when the source doesn't say what they do. */
-  role: HelperRoleSchema.nullable(),
+  /** What they do, in plain words ("babysitter"). null when the source doesn't say. */
+  role: z.string().nullable(),
   houseKeyAccess: HouseKeyAccessSchema,
   payment: PaymentInfoSchema,
   contact: ContactInfoSchema,
@@ -29,7 +31,8 @@ export type ExtractedHelper = z.infer<typeof ExtractedHelperSchema>;
 
 export const ExtractedTermSchema = z.object({
   helperName: z.string().min(1),
-  serviceKind: ServiceKindSchema.nullable(),
+  /** Reuse the helper's existing key when this prices a service they already have; otherwise a new slug. */
+  serviceKey: ServiceKeySchema,
   serviceLabel: z.string().min(1),
   pricingRules: z.array(PricingRuleSchema).min(1),
   schedule: ServiceScheduleSchema,

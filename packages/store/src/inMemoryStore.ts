@@ -24,6 +24,7 @@ import type {
   Household,
   Id,
   OutboundMessage,
+  PaymentRecord,
   PendingAction,
   Session,
   SourceDocument,
@@ -47,6 +48,7 @@ const RECORD_ID: { [E in StoredEntity]: (value: ValueOf<E>) => string } = {
   DOCUMENT: (v) => v.docId,
   SESSION: (v) => v.sessionId,
   TURN: (v) => v.turnId,
+  PAYMENT: (v) => v.paymentId,
 };
 
 /** Every stored entity except Document carries a version. Documents are immutable: create only. */
@@ -144,6 +146,14 @@ export class InMemoryStore implements Store {
     return this.all<HelperNote>(StoredEntity.NOTE)
       .filter((n) => filter.helperId === undefined || n.helperId === filter.helperId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  async listPayments(filter: { helperId?: Id; billId?: Id } = {}): Promise<PaymentRecord[]> {
+    return this.all<PaymentRecord>(StoredEntity.PAYMENT)
+      .filter(
+        (p) => (filter.helperId === undefined || p.helperId === filter.helperId) && (filter.billId === undefined || p.billId === filter.billId),
+      )
+      .sort((a, b) => a.paidOn.localeCompare(b.paidOn));
   }
 
   async getDocument(docId: Id): Promise<SourceDocument | null> {

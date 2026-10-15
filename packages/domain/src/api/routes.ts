@@ -19,6 +19,11 @@ import {
   ChatResponseSchema,
   ConfirmActionRequestSchema,
   ConfirmActionResponseSchema,
+  CreateHelperRequestSchema,
+  HelperResponseSchema,
+  RecordPaymentRequestSchema,
+  RecordPaymentResponseSchema,
+  UpdateHelperRequestSchema,
   DocumentResponseSchema,
   EmptyBodySchema,
   HealthResponseSchema,
@@ -68,6 +73,8 @@ export const apiRoutes = {
   getDocument: route({ method: "GET", path: "/api/documents/:id", auth: true, params: idParam, query: null, body: null, response: DocumentResponseSchema }),
 
   listHelpers: route({ method: "GET", path: "/api/helpers", auth: true, params: null, query: null, body: null, response: HelpersResponseSchema }),
+  createHelper: route({ method: "POST", path: "/api/helpers", auth: true, params: null, query: null, body: CreateHelperRequestSchema, response: HelperResponseSchema }),
+  updateHelper: route({ method: "POST", path: "/api/helpers/:id", auth: true, params: idParam, query: null, body: UpdateHelperRequestSchema, response: HelperResponseSchema }),
   listTerms: route({
     method: "GET", path: "/api/terms", auth: true, params: null,
     query: z.object({ helperId: IdSchema.optional() }),
@@ -100,6 +107,7 @@ export const apiRoutes = {
   confirmAction: route({ method: "POST", path: "/api/actions/:ref/confirm", auth: true, params: refParam, query: null, body: ConfirmActionRequestSchema, response: ConfirmActionResponseSchema }),
   rejectAction: route({ method: "POST", path: "/api/actions/:ref/reject", auth: true, params: refParam, query: null, body: RejectActionRequestSchema, response: RejectActionResponseSchema }),
   approveBill: route({ method: "POST", path: "/api/bills/:id/approve", auth: true, params: idParam, query: null, body: ApproveBillRequestSchema, response: ApproveBillResponseSchema }),
+  recordPayment: route({ method: "POST", path: "/api/bills/:id/payment", auth: true, params: idParam, query: null, body: RecordPaymentRequestSchema, response: RecordPaymentResponseSchema }),
   markMessageHandedOff: route({ method: "POST", path: "/api/messages/:id/handed-off", auth: true, params: idParam, query: null, body: EmptyBodySchema, response: MessageHandedOffResponseSchema }),
 } as const;
 

@@ -8,8 +8,8 @@
  * constants.ts, and the verdict is the worst severity present.
  */
 import { z } from "zod";
-import { BillFindingKind, BillVerdictSchema, DayOfWeekSchema, LineStatusSchema, ServiceKindSchema } from "../enums";
-import { CentsSchema, IdSchema, InstantSchema, VersionSchema } from "../primitives";
+import { BillFindingKind, BillVerdictSchema, DayOfWeekSchema, LineStatusSchema } from "../enums";
+import { CentsSchema, IdSchema, InstantSchema, ServiceKeySchema, VersionSchema } from "../primitives";
 import { TermVersionRefSchema } from "./agreement";
 
 /** One step of "why this number": e.g. { "0.5h × $28/hr after 11pm", 1400 }. */
@@ -49,7 +49,7 @@ export const BillFindingSchema = z.discriminatedUnion("kind", [
   z.object({
     ...findingBase,
     kind: z.literal(BillFindingKind.NO_AGREEMENT_FOR_SERVICE),
-    serviceKind: ServiceKindSchema.nullable(),
+    serviceKey: ServiceKeySchema.nullable(),
     serviceLabel: z.string(),
     lineIds: z.array(IdSchema).min(1),
   }),
@@ -65,7 +65,7 @@ export const BillFindingSchema = z.discriminatedUnion("kind", [
   z.object({
     ...findingBase,
     kind: z.literal(BillFindingKind.SCHEDULE_PLAUSIBILITY),
-    serviceKind: ServiceKindSchema,
+    serviceKey: ServiceKeySchema,
     /** Lines dated on days outside the usual schedule. */
     lineIds: z.array(IdSchema).min(1),
     usualDays: z.array(DayOfWeekSchema),
@@ -73,7 +73,7 @@ export const BillFindingSchema = z.discriminatedUnion("kind", [
   z.object({
     ...findingBase,
     kind: z.literal(BillFindingKind.OCCURRENCE_COUNT_PLAUSIBILITY),
-    serviceKinds: z.array(ServiceKindSchema).min(1),
+    serviceKeys: z.array(ServiceKeySchema).min(1),
     billedCount: z.number().int().nonnegative(),
     /** Occurrences the usual schedule implies for the period (e.g. weekdays in the month). */
     scheduledCount: z.number().int().nonnegative(),

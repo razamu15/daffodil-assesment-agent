@@ -3,7 +3,7 @@
  *
  * Versioned rows with effective dates (Doc 3 S1): a rate change closes the old
  * row (effectiveTo) and adds a new one, so Sep 1 is checked against the rate in
- * effect on Sep 1. One term prices one service kind for one helper; the term's
+ * effect on Sep 1. One term prices one service (serviceKey) for one helper; the term's
  * price is the *composition* of its pricingRules (Priya's standard babysitting
  * is HOURLY + HOURLY_AFTER + DAY_MULTIPLIER). A change to any component is a new
  * version of the whole term.
@@ -28,7 +28,6 @@ import {
   MultiplierScopeSchema,
   PricingRuleKind,
   ScheduleKind,
-  ServiceKindSchema,
 } from "../enums";
 import {
   ActionRefSchema,
@@ -37,6 +36,7 @@ import {
   LocalDateSchema,
   LocalTimeSchema,
   NonNegativeCentsSchema,
+  ServiceKeySchema,
   VersionSchema,
 } from "../primitives";
 
@@ -90,8 +90,9 @@ export type ServiceSchedule = z.infer<typeof ServiceScheduleSchema>;
  */
 export const TermContentSchema = z.object({
   helperId: IdSchema,
-  serviceKind: ServiceKindSchema,
-  /** Human name for the service ("Date night", "Tutoring"). For ServiceKind.OTHER it is also part of the term's identity. */
+  /** Which of the helper's services this prices. All versions of a term share it. */
+  serviceKey: ServiceKeySchema,
+  /** Human name for the service ("Date night", "Tutoring"). Display only. */
   serviceLabel: z.string().min(1),
   pricingRules: z.array(PricingRuleSchema).min(1),
   schedule: ServiceScheduleSchema,

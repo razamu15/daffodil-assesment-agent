@@ -31,6 +31,11 @@ What to build in `packages/agent`:
 
 **FIXTURES:** `@helper-assistant/fixtures` provides docs, helpers, terms and bills. `@helper-assistant/fixtures/node`'s `readStarterPackFile` sends the real screenshots to the model. `expectedBillChecks` and `expectedSeptemberMonthStatus` drive the scenario assertions.
 
+**ALSO (decided after Track 0, see agent-design §10 C3, C5, C17):**
+- `save_helper` saves profiles directly (no proposal). Helper `role` is free text.
+- Give extraction each helper's existing `serviceKey`s so terms and bill lines reuse them.
+- "Talked to Priya, the bill is correct" → `propose_bill_approval` with the flagged items as accepted exceptions and Jordan's reason. Never approve directly.
+
 **DONE WHEN:**
 ```
 npm test -w packages/agent          # loop + tools with FakeModel; no AWS needed; no live calls in npm test

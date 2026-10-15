@@ -15,7 +15,6 @@ import {
   BillStatusSchema,
   ExceptionTarget,
   LineKindSchema,
-  ServiceKindSchema,
 } from "../enums";
 import {
   ActionRefSchema,
@@ -25,6 +24,7 @@ import {
   LocalDateSchema,
   LocalDateTimeSchema,
   NonNegativeCentsSchema,
+  ServiceKeySchema,
   VersionSchema,
 } from "../primitives";
 import { TermVersionRefSchema } from "./agreement";
@@ -34,8 +34,6 @@ import { BillCheckSchema } from "./check";
 export const AuthorizationClaimSchema = z.object({
   /** Name as the helper wrote it. */
   claimedApprover: z.string().min(1),
-  /** Matched household principal, or null if we can't tell who. */
-  claimedApproverPersonId: IdSchema.nullable(),
   text: z.string().min(1),
 });
 export type AuthorizationClaim = z.infer<typeof AuthorizationClaimSchema>;
@@ -43,8 +41,11 @@ export type AuthorizationClaim = z.infer<typeof AuthorizationClaimSchema>;
 /** A line as extracted, before the system assigns it an id. */
 export const LineItemDraftSchema = z.object({
   lineKind: LineKindSchema,
-  /** null = extraction couldn't tell which service. Never guessed; the line becomes CANNOT_COMPUTE. */
-  serviceKind: ServiceKindSchema.nullable(),
+  /**
+   * One of the helper's term serviceKeys. null = couldn't tell which service, never
+   * guessed (the line becomes CANNOT_COMPUTE). A key with no term → NOT_COVERED.
+   */
+  serviceKey: ServiceKeySchema.nullable(),
   /** The helper's own wording for the line ("date night", "last minute fee"). */
   label: z.string(),
   /** Day of service when known. Set even when startAt is set. */

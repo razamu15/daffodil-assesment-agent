@@ -13,19 +13,13 @@
 import { z } from "zod";
 
 // ── People ──────────────────────────────────────────────────────────────────
-
-export const PrincipalRoleSchema = z.enum(["DECISION_MAKER", "PARTNER"]);
-export const PrincipalRole = PrincipalRoleSchema.enum;
-export type PrincipalRole = z.infer<typeof PrincipalRoleSchema>;
+// A helper's role ("babysitter", "tutor") and a term's service are free-form
+// strings, not enums: no logic branches on them, and new helper types must be
+// recordable without a contract change. See ServiceKeySchema in primitives.ts.
 
 export const BillingCadenceSchema = z.enum(["MONTHLY_IN_ARREARS"]);
 export const BillingCadence = BillingCadenceSchema.enum;
 export type BillingCadence = z.infer<typeof BillingCadenceSchema>;
-
-/** OTHER exists so an unseen helper type (a tutor) can still be recorded; its services use ServiceKind.OTHER. */
-export const HelperRoleSchema = z.enum(["BABYSITTER", "CLEANER", "DOG_WALKER", "OTHER"]);
-export const HelperRole = HelperRoleSchema.enum;
-export type HelperRole = z.infer<typeof HelperRoleSchema>;
 
 export const HelperStatusSchema = z.enum(["ACTIVE", "ENDED"]);
 export const HelperStatus = HelperStatusSchema.enum;
@@ -49,22 +43,6 @@ export type ContactChannel = z.infer<typeof ContactChannelSchema>;
 export const DayOfWeekSchema = z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
 export const DayOfWeek = DayOfWeekSchema.enum;
 export type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
-
-/**
- * What was done. Each term prices exactly one service kind for one helper.
- * OTHER is identified together with the term's serviceLabel (see termSlot in targetKeys.ts).
- */
-export const ServiceKindSchema = z.enum([
-  "BABYSITTING_STANDARD",
-  "BABYSITTING_DATE_NIGHT",
-  "CLEANING_REGULAR",
-  "CLEANING_DEEP",
-  "DOG_WALK_30",
-  "DOG_WALK_60",
-  "OTHER",
-]);
-export const ServiceKind = ServiceKindSchema.enum;
-export type ServiceKind = z.infer<typeof ServiceKindSchema>;
 
 export const BillableUnitSchema = z.enum(["HOUR", "VISIT", "WALK"]);
 export const BillableUnit = BillableUnitSchema.enum;
@@ -175,6 +153,8 @@ export const BillingPeriodStateSchema = z.enum([
   "CHECKED_NEEDS_INFO",
   "CHECKED_FLAGGED",
   "APPROVED",
+  /** Approved, and Jordan recorded paying it (a PaymentRecord exists). */
+  "PAID",
 ]);
 export const BillingPeriodState = BillingPeriodStateSchema.enum;
 export type BillingPeriodState = z.infer<typeof BillingPeriodStateSchema>;
@@ -185,8 +165,8 @@ export type ExceptionTarget = z.infer<typeof ExceptionTargetSchema>;
 
 // ── Pending actions (the confirmation gate) ─────────────────────────────────
 
+/** Helper profile edits are NOT gated: only terms, approvals, messages and engagement ends are. */
 export const PendingActionTypeSchema = z.enum([
-  "HELPER_PROFILE_CHANGE",
   "AGREEMENT_CHANGE",
   "BILL_APPROVAL",
   "HELPER_MESSAGE",
@@ -213,13 +193,9 @@ export const ActionResolver = ActionResolverSchema.enum;
 export type ActionResolver = z.infer<typeof ActionResolverSchema>;
 
 /** What a PendingAction was computed against; checked again on confirm to detect STALE. */
-export const ActionBasisKindSchema = z.enum(["NEW_ENTITY", "HELPER_VERSION", "BILL_VERSION", "TERM_SLOT", "NONE"]);
+export const ActionBasisKindSchema = z.enum(["HELPER_VERSION", "BILL_VERSION", "TERM_SLOT", "NONE"]);
 export const ActionBasisKind = ActionBasisKindSchema.enum;
 export type ActionBasisKind = z.infer<typeof ActionBasisKindSchema>;
-
-export const HelperProfileChangeKindSchema = z.enum(["CREATE", "UPDATE"]);
-export const HelperProfileChangeKind = HelperProfileChangeKindSchema.enum;
-export type HelperProfileChangeKind = z.infer<typeof HelperProfileChangeKindSchema>;
 
 // ── Messages and notes ──────────────────────────────────────────────────────
 

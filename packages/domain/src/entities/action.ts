@@ -10,7 +10,6 @@ import {
   ActionResolverSchema,
   AgreementChangeKind,
   ContactChannelSchema,
-  HelperProfileChangeKind,
   HouseKeyAccessSchema,
   MessageReasonSchema,
   PendingActionStatusSchema,
@@ -22,27 +21,25 @@ import {
   InstantSchema,
   LocalDateSchema,
   NonNegativeCentsSchema,
+  ServiceKeySchema,
   VersionSchema,
 } from "../primitives";
 import { TermContentSchema } from "./agreement";
 import { AcceptedExceptionSchema, BillingPeriodSchema } from "./bill";
 import { BillCheckSchema } from "./check";
-import { HelperProfileSchema } from "./people";
 
 /**
  * What the proposal was computed against. On confirm, core re-reads it; any
  * difference makes the action STALE instead of applying it.
  */
 export const ActionBasisSchema = z.discriminatedUnion("kind", [
-  /** Creates something that must not exist yet (e.g. a new helper with a pre-assigned id). */
-  z.object({ kind: z.literal(ActionBasisKind.NEW_ENTITY) }),
   z.object({ kind: z.literal(ActionBasisKind.HELPER_VERSION), helperId: IdSchema, version: VersionSchema }),
   z.object({ kind: z.literal(ActionBasisKind.BILL_VERSION), billId: IdSchema, version: VersionSchema }),
   /** The term currently occupying the helper's service slot, or none. */
   z.object({
     kind: z.literal(ActionBasisKind.TERM_SLOT),
     helperId: IdSchema,
-    slot: z.string(),
+    serviceKey: ServiceKeySchema,
     currentTermId: IdSchema.nullable(),
     currentTermVersion: VersionSchema.nullable(),
   }),
@@ -52,11 +49,6 @@ export const ActionBasisSchema = z.discriminatedUnion("kind", [
 export type ActionBasis = z.infer<typeof ActionBasisSchema>;
 
 // ── Payloads, one per action type ───────────────────────────────────────────
-
-export const HelperProfileChangePayloadSchema = z.discriminatedUnion("change", [
-  z.object({ change: z.literal(HelperProfileChangeKind.CREATE), helperId: IdSchema, profile: HelperProfileSchema }),
-  z.object({ change: z.literal(HelperProfileChangeKind.UPDATE), helperId: IdSchema, profile: HelperProfileSchema }),
-]);
 
 export const AgreementChangePayloadSchema = z.discriminatedUnion("change", [
   z.object({ change: z.literal(AgreementChangeKind.ADD_TERM), term: TermContentSchema }),
@@ -115,10 +107,6 @@ const pendingActionBase = z.object({
 });
 
 export const PendingActionSchema = z.discriminatedUnion("type", [
-  pendingActionBase.extend({
-    type: z.literal(PendingActionType.HELPER_PROFILE_CHANGE),
-    payload: HelperProfileChangePayloadSchema,
-  }),
   pendingActionBase.extend({ type: z.literal(PendingActionType.AGREEMENT_CHANGE), payload: AgreementChangePayloadSchema }),
   pendingActionBase.extend({ type: z.literal(PendingActionType.BILL_APPROVAL), payload: BillApprovalPayloadSchema }),
   pendingActionBase.extend({ type: z.literal(PendingActionType.HELPER_MESSAGE), payload: HelperMessagePayloadSchema }),

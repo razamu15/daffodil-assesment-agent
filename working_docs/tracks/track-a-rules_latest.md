@@ -28,6 +28,11 @@ What to build:
 
 **USE FAKES FOR:** Store → `InMemoryStore`; BlobStore → `InMemoryBlobStore` (both in `packages/store`); Clock → `FixedClock.onDate(STARTER_PACK_TODAY)` (domain); TurnRunner and MemoryClient → small recording test doubles inside api tests (`LocalTurnRunner` and `InMemoryMemory` belong to Track B).
 
+**ALSO (decided after Track 0, see agent-design §10 C3, C5, C16, C17):**
+- Helper profile routes `POST /api/helpers` and `POST /api/helpers/:id` save directly (version-checked, not gated).
+- `POST /api/bills/:id/payment` writes a `PaymentRecord` (only for an APPROVED bill, one per bill). Month status shows `PAID`.
+- `record_bill`'s core function runs `checkBill` before saving. Bill lines match terms by `serviceKey`; a key the helper has no term for is `NOT_COVERED`.
+
 **DONE WHEN:**
 ```
 npm test -w packages/core    # answer key passes; transition table; stale/supersede; §6.4 rows that are pure core

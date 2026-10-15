@@ -20,6 +20,7 @@ import type { Bill } from "../entities/bill";
 import type { SourceDocument } from "../entities/document";
 import type { PendingAction } from "../entities/action";
 import type { Household, Helper } from "../entities/people";
+import type { PaymentRecord } from "../entities/payment";
 import type { HelperNote, OutboundMessage, Session, Turn } from "../entities/records";
 import type { BillStatus, PendingActionStatus } from "../enums";
 import type { ActionRef, Id, MonthKey } from "../primitives";
@@ -35,6 +36,7 @@ export const StoredEntity = {
   DOCUMENT: "DOCUMENT",
   SESSION: "SESSION",
   TURN: "TURN",
+  PAYMENT: "PAYMENT",
 } as const;
 export type StoredEntity = (typeof StoredEntity)[keyof typeof StoredEntity];
 
@@ -48,7 +50,8 @@ export type StoreRecord =
   | { entity: typeof StoredEntity.NOTE; value: HelperNote }
   | { entity: typeof StoredEntity.DOCUMENT; value: SourceDocument }
   | { entity: typeof StoredEntity.SESSION; value: Session }
-  | { entity: typeof StoredEntity.TURN; value: Turn };
+  | { entity: typeof StoredEntity.TURN; value: Turn }
+  | { entity: typeof StoredEntity.PAYMENT; value: PaymentRecord };
 
 export const WriteConditionKind = {
   /** Create: fails if a record with this identity exists. */
@@ -90,6 +93,9 @@ export interface Store {
   listMessages(filter?: { helperId?: Id }): Promise<OutboundMessage[]>;
 
   listNotes(filter?: { helperId?: Id }): Promise<HelperNote[]>;
+
+  /** Ordered by paidOn. */
+  listPayments(filter?: { helperId?: Id; billId?: Id }): Promise<PaymentRecord[]>;
 
   getDocument(docId: Id): Promise<SourceDocument | null>;
 

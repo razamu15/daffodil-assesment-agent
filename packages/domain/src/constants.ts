@@ -9,19 +9,9 @@ import {
   DayOfWeek,
   DocumentKind,
   FindingSeverity,
-  HelperRole,
   LineStatus,
   PendingActionStatus,
-  ServiceKind,
 } from "./enums";
-
-/** Which service kinds a helper of each role may have terms for. OTHER is allowed for everyone. */
-export const ROLE_SERVICE_KINDS: Record<HelperRole, readonly ServiceKind[]> = {
-  [HelperRole.BABYSITTER]: [ServiceKind.BABYSITTING_STANDARD, ServiceKind.BABYSITTING_DATE_NIGHT, ServiceKind.OTHER],
-  [HelperRole.CLEANER]: [ServiceKind.CLEANING_REGULAR, ServiceKind.CLEANING_DEEP, ServiceKind.OTHER],
-  [HelperRole.DOG_WALKER]: [ServiceKind.DOG_WALK_30, ServiceKind.DOG_WALK_60, ServiceKind.OTHER],
-  [HelperRole.OTHER]: [ServiceKind.OTHER],
-};
 
 /**
  * Source precedence when inputs disagree (Doc 3 §3.5). Lower rank = more reliable.

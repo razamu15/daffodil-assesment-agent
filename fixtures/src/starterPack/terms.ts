@@ -5,10 +5,20 @@
  * Aug 27 text ($28/$38 from September) outranks undated notes (Doc 3 §3.5). The
  * agent should surface that disagreement to Jordan, not silently store $25.
  */
-import { DayOfWeek, MultiplierScope, PricingRuleKind, ScheduleKind, ServiceKind } from "@helper-assistant/domain";
+import { DayOfWeek, MultiplierScope, PricingRuleKind, ScheduleKind } from "@helper-assistant/domain";
 import type { AgreementTerm } from "@helper-assistant/domain";
 import { docIds, STARTER_PACK_UPLOADED_AT } from "./documents";
 import { helperIds } from "./people";
+
+/** Each helper's service keys. Bill lines point at these. */
+export const serviceKeys = {
+  priyaStandard: "standard",
+  priyaDateNight: "date-night",
+  lupeRegular: "regular",
+  lupeDeep: "deep-clean",
+  theoWalk30: "walk-30",
+  theoWalk60: "walk-60",
+} as const;
 
 export const termIds = {
   priyaStandard: "term-priya-standard",
@@ -28,7 +38,7 @@ export const starterPackTerms: AgreementTerm[] = [
     termId: termIds.priyaStandard,
     createdByActionRef: 4,
     helperId: helperIds.priya,
-    serviceKind: ServiceKind.BABYSITTING_STANDARD,
+    serviceKey: serviceKeys.priyaStandard,
     serviceLabel: "Babysitting",
     pricingRules: [
       { kind: PricingRuleKind.HOURLY, amountCents: 2200 },
@@ -51,7 +61,7 @@ export const starterPackTerms: AgreementTerm[] = [
     termId: termIds.priyaDateNight,
     createdByActionRef: 5,
     helperId: helperIds.priya,
-    serviceKind: ServiceKind.BABYSITTING_DATE_NIGHT,
+    serviceKey: serviceKeys.priyaDateNight,
     serviceLabel: "Date night",
     pricingRules: [
       { kind: PricingRuleKind.FLAT_BLOCK, amountCents: 10000, untilTime: "23:00" },
@@ -74,7 +84,7 @@ export const starterPackTerms: AgreementTerm[] = [
     // Closed by the Aug 28 change: version bumped when effectiveTo was set.
     version: 2,
     helperId: helperIds.lupe,
-    serviceKind: ServiceKind.CLEANING_REGULAR,
+    serviceKey: serviceKeys.lupeRegular,
     serviceLabel: "Regular cleaning",
     pricingRules: [{ kind: PricingRuleKind.FLAT_PER_UNIT, unit: "VISIT", amountCents: 14000 }],
     schedule: { kind: ScheduleKind.WEEKLY_ON, days: [DayOfWeek.TUE] },
@@ -90,7 +100,7 @@ export const starterPackTerms: AgreementTerm[] = [
     createdByActionRef: 8,
     supersedesTermId: termIds.lupeRegular140,
     helperId: helperIds.lupe,
-    serviceKind: ServiceKind.CLEANING_REGULAR,
+    serviceKey: serviceKeys.lupeRegular,
     serviceLabel: "Regular cleaning",
     pricingRules: [{ kind: PricingRuleKind.FLAT_PER_UNIT, unit: "VISIT", amountCents: 15000 }],
     schedule: { kind: ScheduleKind.WEEKLY_ON, days: [DayOfWeek.TUE] },
@@ -105,7 +115,7 @@ export const starterPackTerms: AgreementTerm[] = [
     termId: termIds.lupeDeep,
     createdByActionRef: 7,
     helperId: helperIds.lupe,
-    serviceKind: ServiceKind.CLEANING_DEEP,
+    serviceKey: serviceKeys.lupeDeep,
     serviceLabel: "Deep clean",
     pricingRules: [{ kind: PricingRuleKind.FLAT_PER_UNIT, unit: "VISIT", amountCents: 22000 }],
     schedule: { kind: ScheduleKind.AD_HOC },
@@ -120,7 +130,7 @@ export const starterPackTerms: AgreementTerm[] = [
     termId: termIds.theoWalk30,
     createdByActionRef: 9,
     helperId: helperIds.theo,
-    serviceKind: ServiceKind.DOG_WALK_30,
+    serviceKey: serviceKeys.theoWalk30,
     serviceLabel: "30-minute walk",
     pricingRules: [{ kind: PricingRuleKind.FLAT_PER_UNIT, unit: "WALK", amountCents: 2800 }],
     schedule: { kind: ScheduleKind.WEEKDAYS },
@@ -138,7 +148,7 @@ export const starterPackTerms: AgreementTerm[] = [
     termId: termIds.theoWalk60,
     createdByActionRef: 10,
     helperId: helperIds.theo,
-    serviceKind: ServiceKind.DOG_WALK_60,
+    serviceKey: serviceKeys.theoWalk60,
     serviceLabel: "60-minute walk",
     pricingRules: [{ kind: PricingRuleKind.FLAT_PER_UNIT, unit: "WALK", amountCents: 3800 }],
     schedule: { kind: ScheduleKind.AD_HOC },

@@ -44,6 +44,13 @@ describe("starter-pack fixtures conform to the domain contract", () => {
     }
   });
 
+  it("every bill line's serviceKey is one of that helper's term keys", () => {
+    for (const bill of starterPackBills) {
+      const keys = new Set(starterPackTerms.filter((t) => t.helperId === bill.helperId).map((t) => t.serviceKey));
+      for (const line of bill.lineItems) if (line.serviceKey !== null) expect(keys.has(line.serviceKey), line.lineId).toBe(true);
+    }
+  });
+
   it("every term and bill points at a starter-pack document", () => {
     const docIdSet = new Set(starterPackDocuments.map((d) => d.docId));
     [...starterPackTerms, ...starterPackBills].forEach((r) => expect(docIdSet.has(r.sourceDocId)).toBe(true));
