@@ -13,7 +13,7 @@
 - `packages/domain/src/tools/tools.ts`: `toolInputSchemas`, `TOOL_CATEGORY`, `ToolResult`, `ToolErrorCode`, `ProposeResult` / `ProposeOutcome`. The deliberately absent tools stay absent.
 - `packages/domain/src/tools/extraction.ts`: the forced output schemas (missing stays `null`, inferences go into `assumptions`)
 - `packages/domain/src/ports/model.ts` (`ModelClient`, `ModelRequest`, `ModelToolChoice`) and `ports/services.ts` (`MemoryClient`, `TurnRunner`, `Clock`, `BlobStore`)
-- `packages/domain/src/ports/store.ts`, `entities/records.ts` (Turn, ToolCallTrace, ModelCallTrace, ChatMessage, MemoryHint), `entities/action.ts`, `targetKeys.ts`, `constants.ts` (`SOURCE_PRECEDENCE_RANK`, `ROLE_SERVICE_KINDS`)
+- `packages/domain/src/ports/store.ts`, `entities/records.ts` (Turn, ToolCallTrace, ModelCallTrace, ChatMessage, MemoryHint), `entities/action.ts`, `targetKeys.ts`, `constants.ts` (`SOURCE_PRECEDENCE_RANK`)
 
 What to build in `packages/agent`:
 - `runTurn({turnId, sessionId}, deps)`. It loads history, injects hints, runs the model ⇄ tools loop, writes memory, saves the Turn trace and releases the lock (Doc 3 §4.1).

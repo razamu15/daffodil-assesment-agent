@@ -14,6 +14,7 @@
     "@helper-assistant/domain": "*"
   },
   "devDependencies": {
-    "@helper-assistant/fixtures": "*"
+    "@helper-assistant/fixtures": "*",
+    "@helper-assistant/store": "*"
   }
 }

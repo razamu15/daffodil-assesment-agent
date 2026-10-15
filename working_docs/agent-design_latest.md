@@ -559,3 +559,4 @@ Track 0 turned §2 to §4 into zod schemas. Where the doc was ambiguous or misse
 | C15 | Extraction names helpers by name; the agent maps names → ids. Bill extraction lines use `relatedLineIndex` | The quarantined call has no ids |
 | C16 | `PaymentRecord` entity, route `POST /api/bills/:id/payment`, month state `PAID` | Jordan can mark an approved bill as paid without editing the sealed bill |
 | C17 | `record_bill` runs `checkBill` before returning | A bill is never stored unchecked |
+| C18 | `amountApprovedCents` = sum of the lines, never the stated total. `billedCents` keeps the stated total for display | The stated total is never trusted. Priya approved with her total mismatch accepted → $596, not $626 |

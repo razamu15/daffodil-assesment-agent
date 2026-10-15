@@ -151,13 +151,22 @@ Jordan can ask anything about the records: "What's Priya's Sunday rate?", "What 
 | P7 | **Multiple chats** are saved and listable | Cheap, and it's an audit trail | Decided |
 | P8 | **Long-term memory is on**, for soft facts only | Brief requires memory across conversations | Decided |
 | P9 | **Approve with accepted exceptions** stays available as a secondary action | Jordan may know better than the bill (e.g. Sam really did OK the $40 fee). Without it, a flagged bill is stuck until the helper reissues | Decided |
-| P10 | **Corrected bills replace earlier ones.** A new bill for the same helper and period supersedes the old unapproved one. If the period is already approved, it's flagged, not applied | Real flow after "ask the helper" | Decided |
+| P10 | **Corrected bills replace earlier ones.** A new bill for the same helper and period supersedes the old unapproved one. If the period is already approved, see **S1** below | Real flow after "ask the helper" | Decided |
 | P11 | **Services rendered**: light plausibility checks only (§6) | Cheap, uses data we already hold | Decided |
 | P12 | **One user.** Whoever logs in can confirm and approve. No household members list | Multi-user is out of scope | Decided |
 | P13 | **Mark as paid** on approved bills | Jordan needs to see what's been paid | Decided |
 | P14 | **Helper profiles save without confirmation.** Terms, approvals, messages and engagement ends still need it | Gating name/phone edits was cumbersome | Decided |
+| P15 | **Approval pays the sum of the lines,** never the stated total. A wrong total is shown and must be accepted as an exception | Totals are derived; the helper's total is a claim | Decided |
 
 **On P9:** The brief says Jordan should be able to "approve a bill for payment." If P3 were the *only* path, Jordan couldn't approve a bill that has a known, acceptable exception. I'd keep a quiet secondary button: "Approve anyway…" with the exceptions listed and recorded in the approval.
+
+### Sensitive decisions
+
+These decisions touch money after Jordan has already said yes. They're easy to get wrong, so they're listed here on purpose. Revisit them before changing any approval code.
+
+| # | Decision | What Jordan sees | Why | Risk |
+|---|---|---|---|---|
+| **S1** | **A corrected bill for a month that's already approved is not saved.** If the new bill covers exactly the same period, it's refused with `PERIOD_ALREADY_APPROVED`. If it only overlaps the approved period, it's saved, and its check carries a `PERIOD_ALREADY_APPROVED` finding (a discrepancy) | "September is already approved for Lupe. I didn't record this new bill." | An approved bill is sealed. Replacing it would quietly undo Jordan's approval and could lead to paying twice | If the helper genuinely made a mistake after approval (e.g. forgot a visit), there's no in-app path to record the extra amount. Jordan handles it outside the app. A future fix: a separate "adjustment bill" for an approved period |
 
 ---
 

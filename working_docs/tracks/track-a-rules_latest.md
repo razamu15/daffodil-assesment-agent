@@ -10,7 +10,7 @@
 
 **IMPLEMENT** against these contract files (read, never edit):
 - `packages/domain/src/entities/{agreement,bill,check,action,monthStatus,people,records}.ts`
-- `packages/domain/src/constants.ts`: `LINE_STATUS_SEVERITY`, `BILL_FINDING_SEVERITY`, `SEVERITY_RANK`, `VERDICT_BY_WORST_SEVERITY`, `PERIOD_STATE_BY_VERDICT`, `PENDING_ACTION_TRANSITIONS`, `ROLE_SERVICE_KINDS`, `SOURCE_PRECEDENCE_RANK`, `WEEKDAYS`, `AUTH_TOKEN_TTL_HOURS`
+- `packages/domain/src/constants.ts`: `LINE_STATUS_SEVERITY`, `BILL_FINDING_SEVERITY`, `SEVERITY_RANK`, `VERDICT_BY_WORST_SEVERITY`, `PERIOD_STATE_BY_VERDICT`, `PENDING_ACTION_TRANSITIONS`, `SOURCE_PRECEDENCE_RANK`, `WEEKDAYS`, `AUTH_TOKEN_TTL_HOURS`
 - `packages/domain/src/targetKeys.ts` (`termSlot`, `targetKeys`), `errors.ts` (`StoreCommitError`)
 - `packages/domain/src/ports/store.ts` (Store, `commit`, version contract), `ports/services.ts` (Clock, BlobStore, MemoryClient, TurnRunner)
 - `packages/domain/src/api/routes.ts` (`apiRoutes`) and `api/schemas.ts` (`ApiErrorCodeSchema` and request/response schemas)

@@ -117,7 +117,7 @@ export const ToolErrorCode = {
   NOT_FOUND: "NOT_FOUND",
   /** e.g. record_bill for a period that's already approved → PERIOD_ALREADY_APPROVED. */
   PERIOD_ALREADY_APPROVED: "PERIOD_ALREADY_APPROVED",
-  /** e.g. a service kind not valid for the helper's role. */
+  /** The request is valid input but breaks a domain rule (e.g. approving a flagged bill without accepting every flag). */
   NOT_ALLOWED: "NOT_ALLOWED",
   INTERNAL: "INTERNAL",
 } as const;
