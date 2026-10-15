@@ -15,6 +15,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@helper-assistant/core": "*",
     "@helper-assistant/fixtures": "*",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
