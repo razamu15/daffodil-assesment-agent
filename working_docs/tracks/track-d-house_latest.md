@@ -10,7 +10,7 @@
 
 **IMPLEMENT** against:
 - `packages/domain/src/api/routes.ts`: the paths `/api/health` and `/api/login`. The stub responses must match `HealthResponseSchema` (`{ok: true}`) and `LoginResponseSchema` (`{token, expiresAt}`) in `api/schemas.ts`. Use the token format from Doc 3 §9 and `AUTH_TOKEN_TTL_HOURS` from `constants.ts` (copy the value; infra doesn't depend on domain).
-- The table key schema from Doc 2 §5: one table with string keys `PK`, `SK`, on-demand billing and `DESTROY`. Gate I2's `DynamoStore` targets these names.
+- The table schema from Doc 2 §5: one table per entity, each keyed by the entity's own id, plus the listed GSIs. On-demand billing and `DESTROY`. Pass the table names to the Lambdas as env vars. Gate I2's `DynamoStore` targets these names and GSIs. Doc 2 §11 explains why cross-table transactions are fine.
 - **Lambda entry paths:** stub handlers under `infra/`, using node built-ins only. Pass each entry path in as a single construct prop, so that at I3 it becomes a ~10-line wrapper around `createApp` (api) or `runTurn` (agent) by changing one path. The stub login is temporary and gets deleted at I3.
 - `infra/lib/helper-assistant-stack.ts` and `infra/lib/constructs/` (`Data`, `Memory`, `Agent`, `Api`, `Web`, `Outputs`), plus the entry point `infra/bin/app.ts` (already exists as a stub).
 

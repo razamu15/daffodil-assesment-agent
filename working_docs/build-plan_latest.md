@@ -129,7 +129,7 @@ Track 0: CONTRACTS (sequential, first)
 | **A Rules** | `packages/core`, `packages/store`, `packages/api` | domain | `InMemoryStore`, `Clock` | model, AWS |
 | **B Brain** | `packages/agent` | domain, `core` signatures | `FakeModel`, `InMemoryStore`, `InMemoryMemory` | UI, CDK |
 | **C Face** | `apps/web` | domain (API contract) | Mock API from fixtures | everything server-side |
-| **D House** | `infra/` | table key schema, Lambda entry paths | | app logic |
+| **D House** | `infra/` | table and GSI schema (Doc 2 §5), Lambda entry paths | | app logic |
 
 **One owner per directory.** That's what prevents merge conflicts.
 
@@ -444,7 +444,7 @@ You're the review bottleneck. Stagger the gates.
 
 | Section | What to say |
 |---|---|
-| **Key decisions** | Hand-rolled loop, propose/confirm gate, deterministic checker, DynamoDB single table, deploy-time password |
+| **Key decisions** | Hand-rolled loop, propose/confirm gate, deterministic checker, DynamoDB one table per entity (cross-table transactions), deploy-time password |
 | **Remembers vs records** | AgentCore = soft hints. DynamoDB = truth. Why (Doc 3 §4.5) |
 | **When inputs disagree** | Precedence (Doc 3 §3.5), show both, Jordan decides |
 | **Failure modes** | Misread screenshot, ambiguous terms (late rate), memory wrong or late, plausibility is soft |

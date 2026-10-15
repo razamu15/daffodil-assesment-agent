@@ -45,7 +45,7 @@ If you've never used it, think of it like this:
                     │                                                                                       │
  Jordan ─► CloudFront ──► S3 bucket (static React app)                                                      │
  (browser)          │                                                                                       │
-                    │  /api/*  ──► HTTP API ──► API Lambda ──► DynamoDB (single table)                     │
+                    │  /api/*  ──► HTTP API ──► API Lambda ──► DynamoDB (one table per entity)             │
                     │                              │   │                                                    │
                     │                              │   └──► S3 (uploaded screenshots, private)             │
                     │                              │                                                        │
@@ -147,53 +147,43 @@ This contract is written once as zod schemas in `packages/domain` (`api/routes.t
 
 ---
 
-## 5. Data store: DynamoDB single table
+## 5. Data store: DynamoDB, one table per entity
 
-One household means one partition. Everything is a prefix query.
+Each entity gets its own table. Every table's partition key is the entity's own id. List queries use a global secondary index (GSI). There's one household, so no table carries a household key.
 
-```
-PK = HH#<householdId>
+| Table | Partition key | GSIs (partition → sort) | Used for |
+|---|---|---|---|
+| `Households` | `householdId` | none | the one household row |
+| `Helpers` | `helperId` | none | list = Scan (a handful of rows) |
+| `Terms` | `termId` | `byHelper`: `helperId` → `effectiveFrom` | a helper's terms, in date order |
+| `Bills` | `billId` | `byMonth`: `periodMonth` → `periodStart`; `byHelper`: `helperId` → `periodStart` | bills for a month; a helper's bills |
+| `Actions` | `ref` (number) | `byStatus`: `status` → `ref`; `byTarget`: `targetKey` → `ref` | pending decisions; conflict lookup |
+| `Messages` | `messageId` | `byHelper`: `helperId` → `createdAt` | drafted messages per helper |
+| `Notes` | `noteId` | `byHelper`: `helperId` → `createdAt` | a helper's notes |
+| `Payments` | `paymentId` | `byHelper`: `helperId` → `paidOn`; `byBill`: `billId` | paid status |
+| `Documents` | `docId` | none | source documents (images live in S3) |
+| `Sessions` | `sessionId` | none | list = Scan, sorted in code. Holds the `activeTurnId` lock |
+| `Turns` | `turnId` | `bySession`: `sessionId` → `createdAt` | a chat's turns |
+| `Counters` | `name` | none | the atomic action-ref counter |
 
-SK                                          Item
-──────────────────────────────────────────  ────────────────────
-HOUSEHOLD                                   Household
-HELPER#<helperId>                           Helper
-TERM#<helperId>#<effectiveFrom>#<termId>    AgreementTerm
-BILL#<periodStart>#<helperId>#<billId>      Bill (lines + approval embedded)
-ACTION#<ref zero-padded>                    PendingAction
-MSG#<createdAt>#<messageId>                 OutboundMessage
-NOTE#<noteId>                               HelperNote
-DOC#<docId>                                 SourceDocument
-PAY#<paymentId>                             PaymentRecord
-SESSION#<sessionId>                         Session (holds activeTurnId lock)
-TURN#<turnId>                               Turn trace (sessionId as an attribute; GET /api/turns/:id has only the id)
-COUNTER#<name>                              atomic counters (action refs)
-```
+`periodMonth` (e.g. `2026-09`) is a stored copy of the first 7 characters of `period.start`, written only so the `byMonth` index has a key. Line items and the approval stay embedded in the bill item.
 
-### Access patterns
+### Why separate tables
 
-| Need | Query |
-|---|---|
-| All helpers | `begins_with(SK, "HELPER#")` |
-| Terms for a helper | `begins_with(SK, "TERM#<helperId>#")` |
-| Bills for a month | `begins_with(SK, "BILL#2026-09")` |
-| Pending actions | `begins_with(SK, "ACTION#")`, filter on status |
-| Turns of a session | `begins_with(SK, "TURN#")`, filter on `sessionId` (small data) |
-
-### Why single table, and what's the catch
-
-- **Why:** one household, small data, trivial queries, and one place for conditional writes.
-- **Catch:** less obvious to read. The `Store` interface hides the key scheme (Doc 4 §2), so the rest of the code never sees `SK`.
-- **Passed on:** Aurora (VPC, slower deploy, heavier), and one table per entity (more CDK, same result).
+- **Why:** each table holds one kind of thing, so it reads like any other database. Keys are just ids.
+- **Cost:** about 12 tables and some GSIs in CDK, against one table before. It's all on-demand billing, so there's no extra charge for having more tables.
+- **No code changes:** only the future `DynamoStore` (gate I2) knows about tables and keys. Every other package talks to the `Store` interface.
+- **Passed on:** a single table with prefixed sort keys (`HELPER#…`, `TERM#…`). It has fewer resources but is harder to read. Also passed on: Aurora (needs a VPC, slower to deploy).
 
 ### Concurrency tools we use
 
 | Need | DynamoDB feature |
 |---|---|
 | Version check on confirm | `ConditionExpression: version = :expected` |
-| Approved is immutable | `ConditionExpression: #status = :received` on the approve write. No update path for approved items |
+| Approved is immutable | Every bill write carries `attribute_not_exists(billId) OR #status <> :approved`. No update path for approved items |
 | One turn per session | Conditional update of `activeTurnId` |
-| Short action refs | Atomic `ADD` on a counter item |
+| Short action refs | Atomic `ADD` on the `Counters` item |
+| Confirm = action + change together | `TransactWriteItems` across tables (see §11) |
 
 ---
 
@@ -213,7 +203,7 @@ infra/
 
 | Construct | Creates |
 |---|---|
-| `Data` | DynamoDB table (on-demand, `DESTROY`), uploads bucket (private, `autoDeleteObjects`). The bucket backs the `BlobStore` seam |
+| `Data` | DynamoDB tables and GSIs from §5 (on-demand, `DESTROY`), uploads bucket (private, `autoDeleteObjects`). The bucket backs the `BlobStore` seam |
 | `Memory` | AgentCore Memory resource with strategies. **[VERIFY]** L1 `CfnMemory` name and properties |
 | `Agent` | Agent Lambda (esbuild-bundled, 5 min timeout), Bedrock + AgentCore + table permissions, async retries = 0 |
 | `Api` | API Lambda, HTTP API route `ANY /api/{proxy+}` |
@@ -350,6 +340,35 @@ Log one structured line per tool call with `turnId` and `sessionId` so logs and 
 | Package manager | npm, workspaces |
 | IaC | AWS CDK in TypeScript, one stack |
 | Compute | Two Lambdas (API, Agent), async turns with polling |
-| Store | DynamoDB single table |
+| Store | DynamoDB, one table per entity, GSIs for lists |
 | Hosting | CloudFront + S3, `/api/*` proxied |
 | Auth | Deploy-time password, API-checked token (Doc 3 §9) |
+
+---
+
+## 11. Things to point out in the interview
+
+### Atomic writes across tables
+
+**Question:** with separate tables, can a confirm still write several records together?
+
+**Yes.** DynamoDB's `TransactWriteItems` works across tables in the same account and region. It's all or nothing, and each item can carry its own condition (version check, "not approved"). Confirming a term change writes three tables at once: `Actions` (status → CONFIRMED), `Terms` (close the old row, add the new one), and `Bills` (re-checked open bills).
+
+The limits worth saying out loud:
+
+| Limit | What it means for us |
+|---|---|
+| 100 items per transaction | `STORE_MAX_OPS_PER_COMMIT = 100`. A term change touching more than ~98 open bills would fail. That can't happen for one household, but it's a named future fix |
+| A transaction costs 2× the writes | Irrelevant at this scale |
+| One region, one account | We have one stack in one region |
+| No reads inside the transaction | Version conditions on each item stand in for that |
+
+### GSI reads are eventually consistent
+
+GSIs update a moment after the base table. In two places that matters:
+- **Conflict detection on propose** reads `Actions.byTarget`. Two proposals made within a split second might not see each other. This is safe because the real guard runs at confirm: the version check on what each proposal was based on turns the loser `STALE`.
+- **Lists right after a write** (e.g. a bill just recorded) might lag by a moment. The UI polls or reloads, so this only shows up as a tiny delay.
+
+### Scans on small tables
+
+`Helpers` and `Sessions` are listed with a full Scan. With one household that's a few rows. A multi-household version would add a `householdId` key and a GSI.
