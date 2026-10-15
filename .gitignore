@@ -6,3 +6,4 @@ cdk.out/
 .env
 .env.*
 coverage/
+.claude/
