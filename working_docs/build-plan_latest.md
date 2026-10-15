@@ -260,9 +260,10 @@ npm run destroy                       # leaves only CDKToolkit
 ```
 
 **You verify by eye:**
-- `grep -r` for your account ID or region in the repo: nothing.
-- Deploy with a different region or profile once.
-- Look in the console: no leftover buckets or log groups after destroy.
+- `grep -r` for your account ID in the repo: nothing. The region and model appear only in `infra/lib/deployConfig.ts` and the README (pinned on purpose, Doc 2 §6).
+- Deploy once from a profile whose default region is **not** `us-east-1`. It should still land in `us-east-1`.
+- Run `npm run deploy` twice in a row. The second bootstrap is a no-op.
+- Look in the console after destroy: no leftover buckets, no `/aws/lambda/HelperAssistant-*` log groups, no memory resource.
 
 **Do this track first and redeploy often.** Infra surprises are the ones that cost hours.
 
@@ -421,9 +422,9 @@ You're the review bottleneck. Stagger the gates.
 | # | Requirement | Where | Verified by |
 |---|---|---|---|
 | 1 | AgentCore Memory, within and across conversations | Doc 3 §4.5. `AgentCoreMemory` | I2 test: history rebuild, hint retrieval |
-| 2 | Claude on Bedrock. Model ID and region in README | `BedrockModel`. `cdk.json` context | `agent:cli` and the deployed smoke test |
+| 2 | Claude on Bedrock. Model ID and region in README | `BedrockModel`. Pinned in `infra/lib/deployConfig.ts` | `agent:cli` and the deployed smoke test |
 | 3 | A UI | Track C | Scenarios (§4) |
-| 4 | CDK. One command up, one down. Nothing hardcoded. Outputs | Doc 2 §6 to 7 | Track D gate, I4 fresh deploy |
+| 4 | CDK. One command up, one down. Nothing tied to *our* account. Outputs | Doc 2 §6 to 7 (deploy runs bootstrap; region pinned on purpose) | Track D gate, I4 fresh deploy |
 | 5 | Confirmations. Approved is immutable | `applyAction`, conditional writes | Track A tests, §6.4 scenarios |
 | 6 | Not open to the internet | Doc 3 §9, Doc 2 §8 | API route tests (no token → 401), manual |
 
@@ -434,11 +435,11 @@ You're the review bottleneck. Stagger the gates.
 ### README.md
 
 1. What it is (2 lines)
-2. Prerequisites: AWS account, Node, CLI, CDK bootstrapped, **Bedrock model X enabled in region Y**
+2. Prerequisites: AWS account, Node 22, credentials, **Claude Sonnet 5.5 (`us.anthropic.claude-sonnet-5-5`) enabled in `us-east-1`**. No manual bootstrap: `deploy` does it
 3. Deploy: `APP_PASSWORD='...' npm run deploy`
 4. Log in: open `AppUrl`, enter the password
-5. Teardown: `npm run destroy`
-6. Model ID and region, stated explicitly
+5. Teardown: `npm run destroy`. What it removes, and that `CDKToolkit` is kept (with the one command to delete it)
+6. Model ID and region, stated explicitly, and why they're pinned
 
 ### DESIGN.md (one page max)
 
@@ -447,8 +448,8 @@ You're the review bottleneck. Stagger the gates.
 | **Key decisions** | Hand-rolled loop, propose/confirm gate, deterministic checker, DynamoDB one table per entity (cross-table transactions), deploy-time password |
 | **Remembers vs records** | AgentCore = soft hints. DynamoDB = truth. Why (Doc 3 §4.5) |
 | **When inputs disagree** | Precedence (Doc 3 §3.5), show both, Jordan decides |
-| **Failure modes** | Misread screenshot, ambiguous terms (late rate), memory wrong or late, plausibility is soft |
-| **Left out** | Payments, sending, schedules, visit log, multi-user, Cognito |
+| **Failure modes** | Misread screenshot, ambiguous terms (late rate), memory wrong or late (long-term extraction takes about a minute), plausibility is soft, "today" is UTC on Lambda |
+| **Left out** | Payments, sending, schedules, visit log, multi-user, Cognito, other regions (pinned to `us-east-1`), household time zone |
 
 ### Assumptions log (goes into DESIGN.md)
 
@@ -474,9 +475,9 @@ You're the review bottleneck. Stagger the gates.
 | 2 | Plausibility notes from schedules (P11 / A2) | **Decided: yes** | 1, 3 |
 | 3 | Supersede rule for corrected bills (P10 / A3) | **Decided: yes** | 1, 3 |
 | 4 | `record_bill` without confirmation (A4) | **Decided: yes.** It runs the checker on save | 3 |
-| 5 | Exact Bedrock model ID, inference profile, region | Verify in console. Record in README | Side doc |
-| 6 | AgentCore Memory CDK construct and IAM action names | Verify in current docs at Track D | 2 |
-| 7 | Household time zone for `SystemClock` (what "today" is) | A deploy-time setting (e.g. `HOUSEHOLD_TIME_ZONE`), failing loudly if unset, like `APP_PASSWORD`. No invented default | 2 |
+| 5 | Exact Bedrock model ID, inference profile, region | **Decided:** `us.anthropic.claude-sonnet-5-5` in `us-east-1`, pinned in `deployConfig.ts` and the README | 2 §6 |
+| 6 | AgentCore Memory CDK construct and IAM action names | Construct **confirmed**: `CfnMemory` in `aws-cdk-lib/aws-bedrockagentcore`. IAM action names still to verify at Track D | 2 |
+| 7 | Household time zone for `SystemClock` (what "today" is) | **Decided: dropped.** `SystemClock` uses the runtime's zone (UTC on Lambda). Known failure mode near month boundaries | 2 §6 |
 
 ---
 

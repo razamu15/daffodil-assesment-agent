@@ -56,6 +56,6 @@ describe("clocks", () => {
   });
 
   it("SystemClock formats today as YYYY-MM-DD", () => {
-    expect(new SystemClock("America/Los_Angeles").today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(new SystemClock().today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

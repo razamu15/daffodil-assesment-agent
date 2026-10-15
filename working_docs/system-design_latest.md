@@ -32,7 +32,7 @@ If you've never used it, think of it like this:
 7. Print the stack Outputs           → the URL and what you need to log in
 ```
 
-**Bootstrap (once per account and region):** `cdk bootstrap` creates a small helper stack (`CDKToolkit`) with the staging bucket and IAM roles that step 3 needs. It's not part of your app, and it's **not** deleted by `cdk destroy`.
+**Bootstrap (once per account and region):** `cdk bootstrap` creates a small helper stack (`CDKToolkit`) with the staging bucket and IAM roles that step 3 needs. It's not part of your app, and it's **not** deleted by `cdk destroy`. Our `deploy` script runs it every time. If the account is already bootstrapped it does nothing, so the reviewer never has to know about it (§7).
 
 **Idempotent:** run `deploy` again and only changes are applied.
 
@@ -193,10 +193,12 @@ Each entity gets its own table. Every table's partition key is the entity's own 
 
 ```
 infra/
-  bin/app.ts                  entry: creates the stack with env from CDK_DEFAULT_*
+  bin/app.ts                  entry: account from CDK_DEFAULT_ACCOUNT, region from deployConfig
+  lib/deployConfig.ts         the pinned region, model ID, stack name and memory settings (one place)
   lib/helper-assistant-stack.ts
   lib/constructs/             small pieces: web hosting, api, agent, data, memory
-  cdk.json                    context: modelId, memoryExpiryDays
+  scripts/cleanupLogGroups.ts runs after `cdk destroy` (see Teardown in §7)
+  cdk.json                    app command only
 ```
 
 ### One stack, grouped into constructs
@@ -204,19 +206,47 @@ infra/
 | Construct | Creates |
 |---|---|
 | `Data` | DynamoDB tables and GSIs from §5 (on-demand, `DESTROY`), uploads bucket (private, `autoDeleteObjects`). The bucket backs the `BlobStore` seam |
-| `Memory` | AgentCore Memory resource with strategies. **[VERIFY]** L1 `CfnMemory` name and properties |
+| `Memory` | AgentCore Memory (`CfnMemory` from `aws-cdk-lib/aws-bedrockagentcore`, confirmed present in our installed `aws-cdk-lib`) with two built-in long-term strategies: semantic and user preference. Passes the memory ID, actor ID and both namespaces to the Agent Lambda (see "Cross-chat memory" below) |
 | `Agent` | Agent Lambda (esbuild-bundled, 5 min timeout), Bedrock + AgentCore + table permissions, async retries = 0 |
 | `Api` | API Lambda, HTTP API route `ANY /api/{proxy+}` |
-| `Web` | S3 bucket, CloudFront distribution, `BucketDeployment` of the built React app |
+| `Web` | S3 bucket (private, `DESTROY`, `autoDeleteObjects`), CloudFront distribution, `BucketDeployment` of the built React app |
 | `Outputs` | `AppUrl`, `Region`, `ModelId`, `MemoryId`, login hint |
 
-### Settings, and nothing hardcoded
+### Settings: region and model are pinned
 
-| Setting | Where it comes from |
+The region and model are fixed constants in `infra/lib/deployConfig.ts`, and the README repeats them. The account is never hardcoded; it comes from the deployer's credentials.
+
+| Setting | Value | Where it comes from |
+|---|---|---|
+| Account | the deployer's | `CDK_DEFAULT_ACCOUNT` (from their credentials) |
+| Region | `us-east-1` | `deployConfig.ts`. Ignores the deployer's default region, so a profile with no region or a different region still deploys to the right place |
+| Model ID | `us.anthropic.claude-sonnet-5-5` (US cross-region inference profile) | `deployConfig.ts`. Passed to the Agent Lambda as an env var |
+| Stack name | `HelperAssistant` | `deployConfig.ts`. The log group cleanup uses it as a prefix |
+| App password | the deployer's choice | `APP_PASSWORD` env var at deploy time. **Deploy fails with a clear message if unset** |
+
+**Why pinned:** AgentCore Memory and this Claude profile both have to exist in the region we deploy to. Pinning one region we've tested removes a whole class of first-deploy failures. It also means we don't need a region-to-prefix lookup.
+
+**Trade-off to state in DESIGN.md:** the brief says "nothing hardcoded to your account or region". We read that as "it must deploy into the reviewer's account without edits", and it does: any account, from any default region. If they want another region, it's a one-line change in `deployConfig.ts`, as long as the model profile prefix and AgentCore support match that region.
+
+### Time: "today" is the runtime's clock
+
+There's no household time zone setting. `SystemClock` uses the time zone of the machine it runs on. Locally that's your laptop. On Lambda it's **UTC**: Lambda reserves the `TZ` variable, so we can't change it.
+
+**Consequence:** in the deployed app, "today" flips at midnight UTC. That's 5 to 8pm on the US west and east coasts. On the evening of Sept 30 in the US, the deployed app already thinks it's Oct 1. That affects month status and "the 15th"-style date resolution near month boundaries. Bill and agreement dates are household-local strings with no time zone (`primitives.ts`), so they're never shifted. Only "what is today" is.
+
+### Cross-chat memory: making sure it actually works
+
+Memory has two halves (Doc 3 §4.5). Short-term (chat history) only needs the memory ID and actor ID. Long-term (hints across chats) also needs the strategies to exist and the agent to search the right namespaces. If either side is missing, nothing errors: the agent just never gets hints. So:
+
+| Rule | How |
 |---|---|
-| Account and region | `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION` (from the deployer's credentials) |
-| Model ID | CDK context `modelId` (`cdk.json` default, overridable with `-c modelId=...`) |
-| App password | `APP_PASSWORD` env var at deploy time. **Deploy fails with a clear message if unset** |
+| One owner for namespace strings | `deployConfig.ts` defines both namespaces, for example `/households/{actorId}/semantic` and `/households/{actorId}/preferences`. The `Memory` construct uses them on the strategies and passes them with `{actorId}` filled in to the Agent Lambda as `AGENTCORE_HINT_NAMESPACES` (`SEMANTIC=…,PREFERENCE=…`, the format `scripts/live/env.ts` already parses) |
+| One actor | `AGENTCORE_ACTOR_ID` is a constant in `deployConfig.ts` (one household, so one actor) |
+| Fail loudly if unwired | The Lambda wiring (I3) throws on startup if `AGENTCORE_HINT_NAMESPACES` is empty. It never quietly falls back to short-term only |
+| Template test | `npm test -w infra` asserts the memory has both strategies and the Agent Lambda env has both namespaces |
+| Live check (I2 and I4) | Chat 1: tell it a preference ("call Priya 'P'"). Wait about 2 minutes (extraction runs in the background). Chat 2: confirm the hint shows up in the turn trace |
+
+Extraction lag (about a minute) is a known failure mode. It goes in DESIGN.md.
 
 ### Gotchas to build around
 
@@ -226,10 +256,12 @@ infra/
 | CloudFront forwards `Host` to API Gateway and it 403s | Origin request policy `AllViewerExceptHostHeader` |
 | CloudFront SPA fallback rewrites API 404s into `index.html` | Use **hash routing** in React (`#/month`) so no fallback is needed |
 | Async Lambda invokes retry by default, so a turn could run twice | `retryAttempts: 0` on the Agent Lambda, plus a turn-status guard |
-| Lambda log groups are created outside the stack, so teardown leaves them | Declare explicit `LogGroup` resources with `DESTROY` |
-| Cross-region inference profile IDs have a region prefix | Parameterize the model ID, and grant `InvokeModel` on the profile **and** the foundation models (`*` region) |
-| First failed deploy leaves the stack in `ROLLBACK_COMPLETE` | `npx cdk destroy` (or delete in the console) before retrying |
+| Lambda log groups are created outside the stack, so teardown leaves them | Our own Lambdas: explicit `LogGroup` resources with `DESTROY`. `BucketDeployment`: pass its `logGroup` prop too |
+| CDK's internal helper Lambdas (e.g. the `autoDeleteObjects` provider) create log groups we can't declare | `scripts/cleanupLogGroups.ts` deletes every `/aws/lambda/HelperAssistant-*` log group after `cdk destroy` (§7) |
+| A US cross-region inference profile routes calls to several US regions | Grant `InvokeModel` on the profile ARN **and** the foundation model ARN in any region (`arn:aws:bedrock:*::foundation-model/...`) |
+| First failed deploy leaves the stack in `ROLLBACK_COMPLETE` | `npm run destroy` before retrying |
 | UI must be built before synth | Root `deploy` script builds the web app first |
+| Deployer's profile has no region, or a different one | Doesn't matter: the region is pinned in `deployConfig.ts` |
 
 ### IAM, least privilege
 
@@ -242,13 +274,13 @@ infra/
 
 ## 7. Bring-up runbook: exactly what you do
 
-### One-time (per account and region)
+### One-time
 
 | # | Step | Command |
 |---|---|---|
 | 1 | Finish the CLI setup | See `saad_aws_cli_setup.md` |
-| 2 | Install dependencies | `npm ci` |
-| 3 | Bootstrap CDK | `npx cdk bootstrap` (uses your active profile and region) |
+| 2 | Enable the model | Bedrock console in `us-east-1`. Claude Sonnet 5.5 (and the Anthropic use-case form, if the account has never used Claude) |
+| 3 | Install dependencies | `npm ci` |
 
 ### Every deploy
 
@@ -259,15 +291,30 @@ infra/
 | 6 | Open it and log in | Password = the `APP_PASSWORD` you used |
 | 7 | Smoke test | `curl <AppUrl>/api/health`, then send a chat message |
 
-`npm run deploy` does: build the React app, then `cdk deploy --require-approval never`.
+`npm run deploy` does three things, in order:
+1. Build the React app.
+2. `cdk bootstrap`. This targets the account from the credentials and the pinned region.
+3. `cdk deploy --require-approval never`.
+
+**Is running bootstrap every time safe?** Yes:
+
+| Account state | What `cdk bootstrap` does |
+|---|---|
+| Never bootstrapped | Creates `CDKToolkit` (~1 to 2 minutes) |
+| Already bootstrapped, same or newer version | Nothing ("no changes"), a few seconds |
+| Bootstrapped with an older version | Upgrades `CDKToolkit` in place. Other CDK apps in that account keep working |
+
+The one case it doesn't cover is an account bootstrapped with a custom qualifier or a locked-down org template. Those deployers know who they are, and the README says to skip to `npx cdk deploy` with their own setup.
 
 ### Teardown
 
 ```
-npm run destroy        # cdk destroy --force
+npm run destroy        # cdk destroy --force, then scripts/cleanupLogGroups.ts
 ```
 
-Removes the stack: tables, buckets (emptied), Lambdas, CloudFront, memory resource, log groups. Leaves only the `CDKToolkit` bootstrap stack. Remove it yourself if you want a fully clean account.
+**Removes everything this app created:** tables, both buckets (emptied first), Lambdas, HTTP API, CloudFront, the memory resource and its stored events, our log groups, and the CDK helper log groups (the cleanup script deletes every `/aws/lambda/HelperAssistant-*` group, so only ours).
+
+**Kept on purpose:** the `CDKToolkit` bootstrap stack and its staging bucket. They're shared by every CDK app in that account and region. If the reviewer already had them, deleting them would break their other CDK apps. If they want a fully clean account, the README gives the one manual command to delete `CDKToolkit`.
 
 ### How long does it take
 
@@ -282,13 +329,13 @@ Removes the stack: tables, buckets (emptied), Lambdas, CloudFront, memory resour
 
 | Symptom | Likely cause |
 |---|---|
-| `AccessDeniedException` calling the model | Model not enabled in this region, or IAM missing the inference-profile ARN |
-| `ValidationException` about model ID | Wrong profile prefix for this region |
+| `AccessDeniedException` calling the model | Model not enabled in `us-east-1`, or IAM missing the profile or foundation-model ARN |
 | `Unable to resolve AWS account` | Credentials or profile not set. Run `aws sts get-caller-identity` |
-| `This stack uses assets, so the toolkit stack must be deployed` | You skipped `cdk bootstrap` |
+| `cdk bootstrap` fails | Custom-qualifier or org-managed bootstrap. Bootstrap the way that account requires, then `npx cdk deploy` in `infra/` |
 | 403 from the API through CloudFront | `Host` header being forwarded (see gotchas) |
 | Login works but chat hangs | Agent Lambda error. Check its log group, and the `Turn` item's `error` |
-| Memory resource create fails | Region doesn't support AgentCore **[VERIFY]**, or wrong property names |
+| Agent Lambda fails on startup with a memory config error | `AGENTCORE_HINT_NAMESPACES` not wired (see "Cross-chat memory" in §6) |
+| No hints in a new chat | Normal for about a minute after the first chat (background extraction). Longer means a strategy or namespace mismatch |
 
 ---
 
@@ -343,6 +390,11 @@ Log one structured line per tool call with `turnId` and `sessionId` so logs and 
 | Store | DynamoDB, one table per entity, GSIs for lists |
 | Hosting | CloudFront + S3, `/api/*` proxied |
 | Auth | Deploy-time password, API-checked token (Doc 3 §9) |
+| Region and model | Pinned: `us-east-1`, `us.anthropic.claude-sonnet-5-5`, in `deployConfig.ts` and the README |
+| Bootstrap | Run by `npm run deploy` every time (no-op when already done) |
+| Teardown | Everything the app created, including CDK helper log groups. `CDKToolkit` is kept (shared) |
+| "Today" | Runtime clock's time zone. UTC on Lambda. No household time zone setting |
+| Long-term memory | Semantic + user preference strategies. Namespaces owned by `deployConfig.ts`. Fails loudly if unwired |
 
 ---
 

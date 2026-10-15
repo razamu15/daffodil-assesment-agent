@@ -25,14 +25,14 @@ export class FixedClock implements Clock {
   }
 }
 
-/** Wall clock. `timeZone` is the household's IANA zone (e.g. "America/Los_Angeles"); no default is assumed. */
+/**
+ * Wall clock in the runtime's own time zone: the laptop's locally, UTC on Lambda
+ * (Lambda reserves TZ). So deployed, "today" flips at midnight UTC. Decided in
+ * Doc 2 §6 ("Time"); there is deliberately no household time zone setting.
+ */
 export class SystemClock implements Clock {
-  private readonly dateFormat: Intl.DateTimeFormat;
-
-  constructor(timeZone: string) {
-    // en-CA formats as YYYY-MM-DD.
-    this.dateFormat = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
-  }
+  // en-CA formats as YYYY-MM-DD. No timeZone option = the runtime's zone.
+  private readonly dateFormat = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" });
 
   now(): Instant {
     return new Date().toISOString();
