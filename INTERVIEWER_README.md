@@ -48,13 +48,33 @@ npm ci
 # Locally (in-memory data, real model per MODEL_PROVIDER):
 npm run dev -w @helper-assistant/local-server   # API on :8787
 npm run dev:local -w @helper-assistant/web      # UI on :5173
+```
 
-# On AWS (one stack, HelperAssistant, in us-east-1):
+On AWS: see [start up and tear down](#aws-start-up-and-tear-down) below.
+
+`LOCAL_SEED` in `.env` picks what the local server starts with: `empty` (the real flow: drop in the starter pack), `documents`, or `full`.
+
+### AWS: start up and tear down
+
+**Before you start:** Node 22+, `npm ci` run at the repo root, and AWS credentials for the account you want to deploy into (for example `export AWS_PROFILE=...`, or `aws login`). The region is pinned to `us-east-1` in [`infra/lib/deployConfig.ts`](infra/lib/deployConfig.ts). The account comes from your credentials.
+
+**Start up** (one command, from the repo root):
+
+```bash
 APP_PASSWORD='choose-one' npm run deploy -w infra
+```
+
+This builds the UI, runs `cdk bootstrap` (a no-op if your account is already bootstrapped), then deploys the `HelperAssistant` stack. It stops before touching AWS if `APP_PASSWORD` is missing. When it finishes, the stack outputs print `AppUrl` (open it in a browser and log in with the password you chose), plus `Region`, `ModelId` and `MemoryId`.
+
+**Tear down** (one command, from the repo root):
+
+```bash
 npm run destroy -w infra
 ```
 
-`LOCAL_SEED` in `.env` picks what the local server starts with: `empty` (the real flow: drop in the starter pack), `documents`, or `full`.
+This runs `cdk destroy` on the stack, then deletes the log groups CDK's helper Lambdas leave behind. Every table, bucket and log group is set to delete with the stack, and buckets are emptied first, so nothing billable is left. The `CDKToolkit` bootstrap stack is kept on purpose, since other CDK apps in the account may share it.
+
+**Check without AWS:** `npm test -w infra` runs template assertions against the synthesized stack. More detail in [`infra/README.md`](infra/README.md).
 
 ---
 
@@ -93,7 +113,7 @@ Tracks A to D could run in parallel because each owns its own directories. Each 
 |---|---|
 | The assignment | [`candidate-pack/BRIEF.md`](candidate-pack/BRIEF.md) |
 | Planning docs | [`working_docs/`](working_docs/) (the four above) and per-track briefs in [`working_docs/tracks/`](working_docs/tracks/) |
-| Every decision, with reasons and sources | [`DECISIONS.md`](DECISIONS.md) |
+| The key product and tech decisions, with reasons and what was turned down | [`DECISIONS.md`](DECISIONS.md) |
 | Shared contracts: entities, enums, tables, API routes, tool schemas | [`packages/domain/src/`](packages/domain/src/) |
 | The bill checker and confirm pipeline (pure code) | [`packages/core/src/`](packages/core/src/) (`checker/`, `actions/`, `records/`) |
 | Store interface and in-memory store | [`packages/store/`](packages/store/) |
