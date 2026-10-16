@@ -168,6 +168,7 @@ authorizationClaim? { claimedApprover, text }
 ```
 - *Why `startAt` / `endAt` as full datetimes:* "7pm to 12am" crosses midnight. A full datetime makes that explicit instead of a hidden `+1 day` rule.
 - *Why a fee is a line with `lineKind: FEE`:* it's checked and totaled like everything else. It's just usually `NOT_COVERED`.
+- *Where a fee is looked up:* first in the line's own service (or the service of the line it hangs off), then in any of the helper's terms in effect. So a fee agreed on its own term (a fee-only `same-day-fee` term) still covers a fee tied to a babysitting visit. Fees match by label, so the agent gives a new FEE rule the bill line's label word for word.
 - *Why `authorizationClaim`:* "Sam said that was fine" is a **claim by the helper about a third party**. We store it as a claim. It never counts as an agreement unless Jordan accepts it.
 - *Passed on:* a bill-level "extras" field. It splits the totals logic into two.
 
@@ -371,7 +372,7 @@ Guidance only. **Not** the safety layer (cheatsheet §7.1).
 
 | Tool | Notes |
 |---|---|
-| `propose_agreement_change(...)` | Returns `needs_decision` with conflicts when the target key clashes |
+| `propose_agreement_change(...)` | Returns `needs_decision` with conflicts when the target key clashes. The source document lives inside the change (`term.sourceDocId`, or `sourceDocId` on END_TERM). A separate top-level field confused the model, which put it inside `change` and gave up after three INVALID_INPUT errors (2026-10-16) |
 | `propose_bill_approval(billId, acceptedExceptions[])` | Snapshots the current check and term versions. Also used after a discrepancy is settled outside the app ("talked to Priya, the bill is correct"): the flagged items become accepted exceptions with Jordan's reason |
 | `propose_helper_message(helperId, reason, body)` | Draft. Jordan edits and confirms |
 | `propose_engagement_end(helperId, endedOn)` | Settlement. Returns the key reminder if `HAS_KEY` |

@@ -58,7 +58,7 @@ async function requireHelper({ store }: Deps, helperId: string): Promise<Helper>
 /** propose_agreement_change. targetKey = the term slot; basedOn = its current occupant. */
 export async function proposeAgreementChange(
   deps: Deps,
-  { change, sourceDocId }: ToolInput<"propose_agreement_change">,
+  { change }: ToolInput<"propose_agreement_change">,
   source: Omit<ActionSource, "docId">,
 ): Promise<ProposeResult> {
   const subject = await changedSlot(deps, change);
@@ -112,8 +112,8 @@ export async function proposeAgreementChange(
     assumptions: change.change === AgreementChangeKind.END_TERM ? [] : change.term.assumptions,
   };
   // An END_TERM's source is whatever said so, not the document the term came from.
-  const termDocId = change.change === AgreementChangeKind.END_TERM ? null : change.term.sourceDocId;
-  return proposeAction(deps, draft, { ...source, docId: sourceDocId ?? termDocId });
+  const docId = change.change === AgreementChangeKind.END_TERM ? change.sourceDocId : change.term.sourceDocId;
+  return proposeAction(deps, draft, { ...source, docId });
 }
 
 function assertEarliest(terms: readonly AgreementTerm[], termId: string, helperId: string, serviceKey: string): AgreementTerm {

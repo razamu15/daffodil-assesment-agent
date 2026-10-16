@@ -54,7 +54,8 @@ export const AgreementChangePayloadSchema = z.discriminatedUnion("change", [
   z.object({ change: z.literal(AgreementChangeKind.ADD_TERM), term: TermContentSchema }),
   /** Closes supersedesTermId the day before term.effectiveFrom and adds term. */
   z.object({ change: z.literal(AgreementChangeKind.REPLACE_TERM), supersedesTermId: IdSchema, term: TermContentSchema }),
-  z.object({ change: z.literal(AgreementChangeKind.END_TERM), termId: IdSchema, effectiveTo: LocalDateSchema }),
+  /** sourceDocId: what says the term ended (Jordan's message, a thread), or null if nothing does. */
+  z.object({ change: z.literal(AgreementChangeKind.END_TERM), termId: IdSchema, effectiveTo: LocalDateSchema, sourceDocId: IdSchema.nullable() }),
   /**
    * A rate that applied *before* the earliest saved version of a service (Jordan
    * learns the history later). Adds `term`, which must end (effectiveTo), and moves

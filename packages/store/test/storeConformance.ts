@@ -304,15 +304,15 @@ export function runStoreConformance(label: string, makeStore: () => Store | Prom
     });
 
     describe("queries: filters and order", () => {
-      it("listBills filters by helper, month (of period.start) and status; orders by period.start then receivedAt", async () => {
+      it("listBills filters by helper, month (of period.start) and status; orders by period.start, receivedAt, then billId", async () => {
         const store = await makeStore();
         const [priya, lupe] = starterPackBills;
         const augustLupe: Bill = { ...lupe!, billId: "lupe-aug", period: { ...lupe!.period, start: "2026-08-01", end: "2026-08-31" } };
         const laterPriya: Bill = { ...priya!, billId: "priya-sep-2", receivedAt: at(30) };
         await store.commit([laterPriya, priya!, approved(lupe!), augustLupe].map((value) => create({ entity: StoredEntity.BILL, value })));
 
-        expect((await store.listBills()).map((b) => b.billId)).toEqual(["lupe-aug", billIds.priya, billIds.lupe, "priya-sep-2"]);
-        expect((await store.listBills({ month: "2026-09" })).map((b) => b.billId)).toEqual([billIds.priya, billIds.lupe, "priya-sep-2"]);
+        expect((await store.listBills()).map((b) => b.billId)).toEqual(["lupe-aug", billIds.lupe, billIds.priya, "priya-sep-2"]);
+        expect((await store.listBills({ month: "2026-09" })).map((b) => b.billId)).toEqual([billIds.lupe, billIds.priya, "priya-sep-2"]);
         expect((await store.listBills({ helperId: helperIds.lupe })).map((b) => b.billId)).toEqual(["lupe-aug", billIds.lupe]);
         expect((await store.listBills({ status: BillStatus.APPROVED })).map((b) => b.billId)).toEqual([billIds.lupe]);
         expect(await store.listBills({ month: "2026-09", helperId: helperIds.lupe, status: BillStatus.RECEIVED })).toEqual([]);

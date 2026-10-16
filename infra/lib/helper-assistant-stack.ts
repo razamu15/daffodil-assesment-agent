@@ -40,5 +40,7 @@ export class HelperAssistantStack extends Stack {
     new CfnOutput(this, "Region", { value: this.region });
     new CfnOutput(this, "ModelId", { value: MODEL_INFERENCE_PROFILE_ID });
     new CfnOutput(this, "MemoryId", { value: memory.memory.attrMemoryId });
+    // apps/local-server (DATA_BACKEND=aws) reads the tables, bucket and memory off this function's env.
+    new CfnOutput(this, "AgentFunctionName", { value: agent.fn.functionName });
   }
 }

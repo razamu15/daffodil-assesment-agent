@@ -14,10 +14,8 @@
  *
  * Call sites: scripts/cli.ts, scripts/scenarios.ts.
  */
-import { BedrockAgentCoreClient } from "@aws-sdk/client-bedrock-agentcore";
-import { MemoryStrategySchema } from "@helper-assistant/domain";
 import type { MemoryClient, ModelClient } from "@helper-assistant/domain";
-import { AgentCoreMemory, agentCoreMemoryApi, InMemoryMemory, modelFromSettings } from "../../src/index";
+import { agentCoreMemory, agentCoreMemoryConfigFromEnv, InMemoryMemory, modelFromSettings } from "../../src/index";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -27,31 +25,12 @@ function required(name: string): string {
   return value.trim();
 }
 
-const optional = (name: string): string | null => {
-  const value = process.env[name];
-  return value === undefined || value.trim() === "" ? null : value.trim();
-};
-
 export type LiveServices = { model: ModelClient; memory: MemoryClient; description: string };
 
 export function liveServicesFromEnv(): LiveServices {
   const { model, description: modelDescription } = modelFromSettings(process.env);
-
-  const memoryId = optional("AGENTCORE_MEMORY_ID");
-  const actorId = optional("AGENTCORE_ACTOR_ID");
-  if ((memoryId === null) !== (actorId === null)) throw new Error("Set both AGENTCORE_MEMORY_ID and AGENTCORE_ACTOR_ID, or neither.");
-  if (memoryId === null || actorId === null) {
-    return { model, memory: new InMemoryMemory(), description: `${modelDescription}; in-memory chat history` };
-  }
+  const memoryConfig = agentCoreMemoryConfigFromEnv(process.env);
+  if (memoryConfig === null) return { model, memory: new InMemoryMemory(), description: `${modelDescription}; in-memory chat history` };
   const region = required("AWS_REGION");
-  const hintNamespaces = (optional("AGENTCORE_HINT_NAMESPACES") ?? "")
-    .split(",")
-    .filter((pair) => pair.trim() !== "")
-    .map((pair) => {
-      const [strategy, namespace] = pair.split("=").map((s) => s.trim());
-      if (strategy === undefined || namespace === undefined || namespace === "") throw new Error(`AGENTCORE_HINT_NAMESPACES entry "${pair}" isn't STRATEGY=namespace`);
-      return { strategy: MemoryStrategySchema.parse(strategy), namespace };
-    });
-  const memory = new AgentCoreMemory(agentCoreMemoryApi(new BedrockAgentCoreClient({ region })), { memoryId, actorId, hintNamespaces });
-  return { model, memory, description: `${modelDescription}; AgentCore memory ${memoryId} in ${region}` };
+  return { model, memory: agentCoreMemory(memoryConfig, region), description: `${modelDescription}; AgentCore memory ${memoryConfig.memoryId} in ${region}` };
 }

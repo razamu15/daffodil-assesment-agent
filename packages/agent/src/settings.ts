@@ -7,7 +7,7 @@
  */
 
 /** Bump when the system prompt or tool descriptions change, so traces say which prompt produced them. */
-export const PROMPT_VERSION = "2026-10-14.1";
+export const PROMPT_VERSION = "2026-10-16.1";
 
 /** Chat messages (user + assistant) loaded from memory at turn start. */
 export const HISTORY_MAX_MESSAGES = 40;

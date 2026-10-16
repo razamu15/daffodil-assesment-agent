@@ -123,30 +123,33 @@ function priceServiceLine(line: LineItem, term: AgreementTerm): Price {
 }
 
 /**
- * A fee belongs to its own service, or to the service of the line it hangs off
- * (relatedLineId). With neither, every agreement in effect is searched for a fee
- * with the same label: finding none is a fact (NOT_COVERED), not a guess.
+ * A fee is looked up first in its own service, or the service of the line it
+ * hangs off (relatedLineId). If that term has no fee with the line's label, or
+ * there's no service, every agreement of the helper in effect is searched: a fee
+ * agreed on its own (e.g. a fee-only "same-day-fee" term) still covers a fee
+ * line tied to a babysitting visit. Finding none is a fact (NOT_COVERED), not a guess.
  */
 function checkFeeLine({ line, bill, terms, linesById }: LineInput): LineResult {
   const related = line.relatedLineId === null ? undefined : linesById.get(line.relatedLineId);
   const serviceKey = line.serviceKey ?? related?.serviceKey ?? null;
   const date = lineDate(line) ?? (related ? lineDate(related) : null);
 
-  let candidates: AgreementTerm[];
+  const label = normalizeFeeLabel(line.label);
+  const feesIn = (candidates: readonly AgreementTerm[]) =>
+    candidates.flatMap((term) =>
+      term.pricingRules
+        .filter((r): r is FeeRule => r.kind === PricingRuleKind.FEE && normalizeFeeLabel(r.label) === label)
+        .map((rule) => ({ term, rule })),
+    );
+
+  let ownService: AgreementTerm[] = [];
   if (serviceKey !== null) {
     const resolution = resolveTerm(serviceKey, date, terms, bill.period);
     if (resolution.kind === TermResolutionKind.AMBIGUOUS) return fromPrice(line, null, cannotCompute(resolution.reason));
-    candidates = resolution.kind === TermResolutionKind.FOUND ? [resolution.term] : [];
-  } else {
-    candidates = terms.filter((t) => inEffectForLine(t, date, bill, terms));
+    ownService = resolution.kind === TermResolutionKind.FOUND ? [resolution.term] : [];
   }
-
-  const label = normalizeFeeLabel(line.label);
-  const matches = candidates.flatMap((term) =>
-    term.pricingRules
-      .filter((r): r is FeeRule => r.kind === PricingRuleKind.FEE && normalizeFeeLabel(r.label) === label)
-      .map((rule) => ({ term, rule })),
-  );
+  const ownMatches = feesIn(ownService);
+  const matches = ownMatches.length > 0 ? ownMatches : feesIn(terms.filter((t) => inEffectForLine(t, date, bill, terms)));
   if (matches.length === 0) return notCovered(line, `No agreement includes a "${line.label}".`);
   const appliedTerm = matches.every((m) => m.term === matches[0]!.term) ? matches[0]!.term : null;
   return fromPrice(line, appliedTerm, priceFeeLine(line, matches.map((m) => m.rule)));

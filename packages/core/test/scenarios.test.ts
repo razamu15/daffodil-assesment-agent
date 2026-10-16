@@ -89,7 +89,6 @@ const lupeRateChange = (cents: number) => ({
       assumptions: [],
     },
   },
-  sourceDocId: null,
 });
 
 describe("corrected bills", () => {
@@ -216,8 +215,7 @@ describe("approval", () => {
     const change = await proposeAgreementChange(
       deps,
       {
-        change: { change: AgreementChangeKind.END_TERM, termId: termIds.lupeDeep, effectiveTo: "2026-09-21" },
-        sourceDocId: null,
+        change: { change: AgreementChangeKind.END_TERM, termId: termIds.lupeDeep, effectiveTo: "2026-09-21", sourceDocId: null },
       },
       testSource,
     );
@@ -293,7 +291,6 @@ describe("a bill that arrives with its helper's rates", () => {
             assumptions: [],
           },
         },
-        sourceDocId: null,
       },
       testSource,
     );
@@ -331,7 +328,6 @@ describe("an earlier rate (ADD_EARLIER_TERM)", () => {
         assumptions: [],
       },
     },
-    sourceDocId: null,
   });
 
   it("adds the earlier rate and moves the current rate's start to the day after it ends", async () => {

@@ -36,6 +36,7 @@ export type { FakeModelStep } from "./model/fakeModel";
 export { InMemoryMemory } from "./memory/inMemoryMemory";
 export { AgentCoreMemory, agentCoreMemoryApi } from "./memory/agentCoreMemory";
 export type { AgentCoreMemoryApi, AgentCoreMemoryConfig } from "./memory/agentCoreMemory";
+export { agentCoreMemory, agentCoreMemoryConfigFromEnv } from "./memory/agentCoreConfig";
 
 export { commitSnapshot, noCommitViolations } from "./audit/noCommitAudit";
 export type { CommitSnapshot } from "./audit/noCommitAudit";

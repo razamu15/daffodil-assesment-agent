@@ -48,7 +48,6 @@ const lupeRate = (cents: number) => ({
       assumptions: [],
     },
   },
-  sourceDocId: null,
 });
 
 describe("approve gate", () => {
@@ -98,7 +97,7 @@ describe("an approved bill can't be edited by any route", () => {
     // A term change that would re-check open bills skips approved ones.
     const change = await proposeAgreementChange(
       core,
-      { change: { change: AgreementChangeKind.END_TERM, termId: termIds.theoWalk60, effectiveTo: "2026-09-15" }, sourceDocId: null },
+      { change: { change: AgreementChangeKind.END_TERM, termId: termIds.theoWalk60, effectiveTo: "2026-09-15", sourceDocId: null } },
       source,
     );
     await call("confirmAction", `/api/actions/${change.action.ref}/confirm`, { actionVersion: 1, messageBody: null });

@@ -290,7 +290,7 @@ Track 0 → (A, B, C, D in any order, directories are disjoint) → I1 → I2 �
 
 ---
 
-### Running I1 locally
+### Running I1 and I2 locally
 
 Settings live in the repo-root `.env` (copy `.env.example`). The local server reads it at startup and fails loudly on anything missing.
 
@@ -298,7 +298,14 @@ Settings live in the repo-root `.env` (copy `.env.example`). The local server re
 |---|---|
 | `APP_PASSWORD` | local login password |
 | `MODEL_PROVIDER` | `anthropic` (needs `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL_ID`) or `bedrock` (needs `BEDROCK_MODEL_ID`, `AWS_REGION`, AWS credentials) |
-| `LOCAL_SEED` | `empty` (upload the starter pack yourself), `documents`, or `full` |
+| `DATA_BACKEND` | `memory` (I1: in-process fakes, reset on restart) or `aws` (I2: the deployed stack's DynamoDB tables, uploads bucket and AgentCore Memory; needs `npm run deploy` and AWS credentials such as `AWS_PROFILE=daffodil`) |
+| `LOCAL_SEED` | `empty` (upload the starter pack yourself), `documents`, or `full`. With `aws`, only `empty`: seeding writes fixed ids create-only |
+
+**How `aws` finds the resources:** the stack output `AgentFunctionName` names the Agent Lambda, and the local server reads the tables, bucket and memory settings off that function's environment (`apps/local-server/src/deployedStack.ts`). Local and deployed runs can't point at different tables. To start over: `npm run reset-aws-data -w @helper-assistant/local-server -- --yes` (empties tables, bucket and long-term memory records; keeps the stack).
+
+**I2 result (2026-10-16):** the conformance suite passes on real DynamoDB (`DYNAMO_CONFORMANCE_REGION=us-east-1 npm test -w @helper-assistant/store`; it creates and deletes its own scratch tables). Chat history round-trips through AgentCore events, and a preference said in one chat came back as a hint in a new chat. Long-term extraction took about 75 s. What real DynamoDB caught that the fake didn't:
+- DynamoDB rejects an unused expression attribute name in a condition.
+- Scan has no order, so tied list orderings now end on the record id (contract in `ports/store.ts`, shared code in `store/src/queries.ts`).
 
 ```
 npm run dev -w @helper-assistant/local-server    # API on :8787, restarts on code changes, in-memory (resets)

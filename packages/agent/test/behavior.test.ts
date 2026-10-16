@@ -94,7 +94,6 @@ describe("the assistant proposes and never commits", () => {
                 assumptions: ["effectiveFrom inferred as 2027-01-01 from 'in January' said on 2026-10-14"],
               },
             },
-            sourceDocId: null,
           },
         }),
       FakeModel.text("Proposed as #1. Confirm it in the app."),

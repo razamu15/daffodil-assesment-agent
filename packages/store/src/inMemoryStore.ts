@@ -33,6 +33,7 @@ import type {
   Turn,
   WriteOp,
 } from "@helper-assistant/domain";
+import { selectActions, selectBills, selectMessages, selectNotes, selectPayments, selectTerms, selectTurns, sortHelpers, sortSessions } from "./queries";
 
 type ValueOf<E extends StoredEntity> = Extract<StoreRecord, { entity: E }>["value"];
 
@@ -85,7 +86,7 @@ export class InMemoryStore implements Store {
   }
 
   async listHelpers(): Promise<Helper[]> {
-    return this.all<Helper>(StoredEntity.HELPER).sort((a, b) => a.name.localeCompare(b.name));
+    return sortHelpers(this.all<Helper>(StoredEntity.HELPER));
   }
 
   async getTerm(termId: Id): Promise<AgreementTerm | null> {
@@ -93,9 +94,7 @@ export class InMemoryStore implements Store {
   }
 
   async listTerms(filter: { helperId?: Id } = {}): Promise<AgreementTerm[]> {
-    return this.all<AgreementTerm>(StoredEntity.TERM)
-      .filter((t) => filter.helperId === undefined || t.helperId === filter.helperId)
-      .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom) || a.createdAt.localeCompare(b.createdAt));
+    return selectTerms(this.all<AgreementTerm>(StoredEntity.TERM), filter);
   }
 
   async getBill(billId: Id): Promise<Bill | null> {
@@ -103,14 +102,7 @@ export class InMemoryStore implements Store {
   }
 
   async listBills(filter: BillFilter = {}): Promise<Bill[]> {
-    return this.all<Bill>(StoredEntity.BILL)
-      .filter(
-        (b) =>
-          (filter.helperId === undefined || b.helperId === filter.helperId) &&
-          (filter.month === undefined || b.period.start.startsWith(filter.month)) &&
-          (filter.status === undefined || b.status === filter.status),
-      )
-      .sort((a, b) => a.period.start.localeCompare(b.period.start) || a.receivedAt.localeCompare(b.receivedAt));
+    return selectBills(this.all<Bill>(StoredEntity.BILL), filter);
   }
 
   async getAction(ref: ActionRef): Promise<PendingAction | null> {
@@ -118,13 +110,7 @@ export class InMemoryStore implements Store {
   }
 
   async listActions(filter: ActionFilter = {}): Promise<PendingAction[]> {
-    return this.all<PendingAction>(StoredEntity.ACTION)
-      .filter(
-        (a) =>
-          (filter.status === undefined || a.status === filter.status) &&
-          (filter.targetKey === undefined || a.targetKey === filter.targetKey),
-      )
-      .sort((a, b) => a.ref - b.ref);
+    return selectActions(this.all<PendingAction>(StoredEntity.ACTION), filter);
   }
 
   async nextActionRef(): Promise<ActionRef> {
@@ -137,23 +123,15 @@ export class InMemoryStore implements Store {
   }
 
   async listMessages(filter: { helperId?: Id } = {}): Promise<OutboundMessage[]> {
-    return this.all<OutboundMessage>(StoredEntity.MESSAGE)
-      .filter((m) => filter.helperId === undefined || m.helperId === filter.helperId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return selectMessages(this.all<OutboundMessage>(StoredEntity.MESSAGE), filter);
   }
 
   async listNotes(filter: { helperId?: Id } = {}): Promise<HelperNote[]> {
-    return this.all<HelperNote>(StoredEntity.NOTE)
-      .filter((n) => filter.helperId === undefined || n.helperId === filter.helperId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return selectNotes(this.all<HelperNote>(StoredEntity.NOTE), filter);
   }
 
   async listPayments(filter: { helperId?: Id; billId?: Id } = {}): Promise<PaymentRecord[]> {
-    return this.all<PaymentRecord>(StoredEntity.PAYMENT)
-      .filter(
-        (p) => (filter.helperId === undefined || p.helperId === filter.helperId) && (filter.billId === undefined || p.billId === filter.billId),
-      )
-      .sort((a, b) => a.paidOn.localeCompare(b.paidOn));
+    return selectPayments(this.all<PaymentRecord>(StoredEntity.PAYMENT), filter);
   }
 
   async getDocument(docId: Id): Promise<SourceDocument | null> {
@@ -165,7 +143,7 @@ export class InMemoryStore implements Store {
   }
 
   async listSessions(): Promise<Session[]> {
-    return this.all<Session>(StoredEntity.SESSION).sort((a, b) => b.lastActiveAt.localeCompare(a.lastActiveAt));
+    return sortSessions(this.all<Session>(StoredEntity.SESSION));
   }
 
   async getTurn(turnId: Id): Promise<Turn | null> {
@@ -173,9 +151,7 @@ export class InMemoryStore implements Store {
   }
 
   async listTurns(sessionId: Id): Promise<Turn[]> {
-    return this.all<Turn>(StoredEntity.TURN)
-      .filter((t) => t.sessionId === sessionId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return selectTurns(this.all<Turn>(StoredEntity.TURN), sessionId);
   }
 
   // ── writes ───────────────────────────────────────────────────────────────

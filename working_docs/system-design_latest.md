@@ -175,6 +175,13 @@ Each entity gets its own table. Every table's partition key is the entity's own 
 - **No code changes:** only the future `DynamoStore` (gate I2) knows about tables and keys. Every other package talks to the `Store` interface.
 - **Passed on:** a single table with prefixed sort keys (`HELPER#…`, `TERM#…`). It has fewer resources but is harder to read. Also passed on: Aurora (needs a VPC, slower to deploy).
 
+### How DynamoStore reads and writes (gate I2)
+
+- **Lists are a strongly consistent Scan, filtered and sorted in code** (`store/src/queries.ts`, shared with `InMemoryStore`). One household is tens to hundreds of rows, so a Scan costs nothing. A GSI query is eventually consistent and could miss a change right after a confirm. The GSIs stay in place for when data grows. *Passed on:* querying the GSIs now.
+- **Null GSI keys are left off the item** (a GSI key can't be NULL) and come back as `null` on read. **`periodMonth`/`periodStart`** are written for the `byMonth` index only and dropped on read. Both are declared per table in `store/src/dynamoTables.ts`, which an infra test keeps in step with `infra/lib/tableSpecs.ts`.
+- **A turn's `toolCalls` trace is stored gzip-compressed**, to stay under the 400 KB item limit on long turns.
+- **Every list order ends on the record id**, so ties don't depend on load order.
+
 ### Concurrency tools we use
 
 | Need | DynamoDB feature |

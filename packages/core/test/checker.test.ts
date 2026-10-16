@@ -115,6 +115,19 @@ describe("coverage", () => {
     expect(result.lineChecks[1]).toMatchObject({ status: LineStatus.MATCHES, expectedCents: 4000, appliedTermIds: [standard.termId] });
     expect(result.lineChecks[1]!.assumptions.join(" ")).toMatch(/same-day booking/);
   });
+
+  it("a fee agreed on its own term covers a fee line tied to another service", () => {
+    const feeOnly: AgreementTerm = {
+      ...standard,
+      termId: "term-same-day-fee",
+      serviceKey: "same-day-fee",
+      serviceLabel: "Same-day fee",
+      pricingRules: [{ kind: PricingRuleKind.FEE, label: "last minute fee", amountCents: 4000, condition: "same-day booking" }],
+      effectiveFrom: "2026-09-20",
+    };
+    const result = check(billWith(priyaBill, priyaBill.lineItems.slice(3, 5)), [standard, feeOnly]);
+    expect(result.lineChecks[1]).toMatchObject({ status: LineStatus.MATCHES, expectedCents: 4000, appliedTermIds: [feeOnly.termId] });
+  });
 });
 
 describe("bill-level findings", () => {

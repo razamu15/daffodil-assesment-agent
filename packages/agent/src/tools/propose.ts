@@ -40,8 +40,8 @@ function proposed(ctx: ToolContext, result: ProposeResult): ProposeResult {
 
 export const proposeHandlers: ProposeHandlers = {
   propose_agreement_change: async (input, ctx) => {
-    if (input.change.change !== AgreementChangeKind.END_TERM) await requireDocument(ctx, input.change.term.sourceDocId, TERM_SOURCE);
-    if (input.sourceDocId !== null) await requireDocument(ctx, input.sourceDocId, TERM_SOURCE);
+    const sourceDocId = input.change.change === AgreementChangeKind.END_TERM ? input.change.sourceDocId : input.change.term.sourceDocId;
+    if (sourceDocId !== null) await requireDocument(ctx, sourceDocId, TERM_SOURCE);
     return proposed(ctx, await proposeAgreementChange(ctx.deps, input, { sessionId: ctx.sessionId, turnId: ctx.turnId }));
   },
 

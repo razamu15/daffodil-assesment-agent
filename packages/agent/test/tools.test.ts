@@ -266,7 +266,6 @@ describe("propose tools", () => {
           assumptions: [],
         },
       },
-      sourceDocId: null,
     });
     expect(ok<{ outcome: string }>(await call("propose_agreement_change", replace(16000))).outcome).toBe(ProposeOutcome.PROPOSED);
     const second = ok<{ outcome: string; conflicts: unknown[] }>(await call("propose_agreement_change", replace(17000)));

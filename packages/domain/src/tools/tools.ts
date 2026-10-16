@@ -64,8 +64,12 @@ export const toolInputSchemas = {
   }),
 
   // PROPOSE
-  /** The helper is identified by change.term.helperId, or by change.termId for END_TERM. */
-  propose_agreement_change: z.object({ change: AgreementChangePayloadSchema, sourceDocId: IdSchema.nullable() }),
+  /**
+   * The helper is identified by change.term.helperId, or by change.termId for END_TERM.
+   * The source document lives inside the change (term.sourceDocId, or END_TERM's
+   * sourceDocId): one place, so the model can't put it in the wrong one.
+   */
+  propose_agreement_change: z.object({ change: AgreementChangePayloadSchema }),
   /**
    * Also the path after a discrepancy is resolved outside the app ("talked to Priya, the
    * fee is fine"): accept the flagged lines/findings with Jordan's reason, then Jordan confirms.

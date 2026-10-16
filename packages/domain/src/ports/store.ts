@@ -13,6 +13,8 @@
  * a BILL whose stored status is APPROVED can never be overwritten
  * (StoreCommitError IMMUTABLE_RECORD). This backs Doc 3 §4.6 step 4.
  *
+ * Every list order ends on the record's id, so ties are deterministic.
+ *
  * The household is implicit: a Store instance is scoped to one household.
  */
 import type { AgreementTerm } from "../entities/agreement";
@@ -80,7 +82,7 @@ export interface Store {
   listTerms(filter?: { helperId?: Id }): Promise<AgreementTerm[]>;
 
   getBill(billId: Id): Promise<Bill | null>;
-  /** `month` matches bills whose period.start falls in that month. Ordered by period.start, then receivedAt. */
+  /** `month` matches bills whose period.start falls in that month. Ordered by period.start, then receivedAt, then billId. */
   listBills(filter?: BillFilter): Promise<Bill[]>;
 
   getAction(ref: ActionRef): Promise<PendingAction | null>;
