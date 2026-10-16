@@ -4,9 +4,9 @@
  * the UI polls GET /api/turns/:id every TURN_POLL_INTERVAL_MS until it finishes.
  * Decided cards are not shown here (ChatScreen lists them in DecidedPanel).
  *
- * Call sites: ChatScreen (full screen), MonthScreen (the side panel).
+ * Call sites: ChatScreen (full screen), HomeScreen (the side panel).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatRole, PendingActionStatus, TURN_POLL_INTERVAL_MS, TurnStatus } from "@helper-assistant/domain";
 import type { AgreementTerm, ChatMessage, Helper, Id, OutboundMessage, PendingAction, Session, TurnStatus as TurnStatusT } from "@helper-assistant/domain";
 import { asClientError, useApiQuery, useApp } from "../../app/AppContext";
@@ -103,36 +103,45 @@ function ConversationView({ session, messages, pending, helpers, terms, outbound
   const [startedTurnId, setStartedTurnId] = useState<Id | null>(null);
   const { running, error } = useTurnPolling(session?.activeTurnId ?? startedTurnId);
 
+  // Follow the conversation: show the newest message and cards as they arrive.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const area = scrollRef.current;
+    if (area) area.scrollTop = area.scrollHeight;
+  }, [messages.length, pending.length, running]);
+
   return (
     <div className="conversation">
-      {sessionId !== null && session === null && <ErrorNote error="That chat doesn't exist." />}
-      {sessionId === null && messages.length === 0 && (
-        <div className="chat-intro">
-          <h2>{intro.title}</h2>
-          <p>{intro.body}</p>
-        </div>
-      )}
-      <ol className="messages">
-        {messages.map((m, i) => (
-          <li key={`${m.at}-${i}`} className={m.role === ChatRole.USER ? "bubble user" : "bubble assistant"}>
-            {m.text}
-          </li>
-        ))}
-        {running && <li className="bubble assistant thinking">Thinking…</li>}
-      </ol>
-      {error !== null && <ErrorNote error={error} />}
-      {pending.length > 0 && (
-        <section className="inline-cards">
-          <h3>Waiting on you</h3>
-          <ActionGroups actions={pending} helpers={helpers} terms={terms} />
-        </section>
-      )}
-      {outbound.length > 0 && (
-        <section className="inline-cards">
-          <h3>Messages for you to send</h3>
-          <MessageList messages={outbound} helpers={helpers} />
-        </section>
-      )}
+      <div className="conversation-scroll" ref={scrollRef}>
+        {sessionId !== null && session === null && <ErrorNote error="That chat doesn't exist." />}
+        {sessionId === null && messages.length === 0 && (
+          <div className="chat-intro">
+            <h2>{intro.title}</h2>
+            <p>{intro.body}</p>
+          </div>
+        )}
+        <ol className="messages">
+          {messages.map((m, i) => (
+            <li key={`${m.at}-${i}`} className={m.role === ChatRole.USER ? "bubble user" : "bubble assistant"}>
+              {m.text}
+            </li>
+          ))}
+          {running && <li className="bubble assistant thinking">Thinking…</li>}
+        </ol>
+        {error !== null && <ErrorNote error={error} />}
+        {pending.length > 0 && (
+          <section className="inline-cards">
+            <h3>Waiting on you</h3>
+            <ActionGroups actions={pending} helpers={helpers} terms={terms} />
+          </section>
+        )}
+        {outbound.length > 0 && (
+          <section className="inline-cards">
+            <h3>Messages for you to send</h3>
+            <MessageList messages={outbound} helpers={helpers} />
+          </section>
+        )}
+      </div>
       <Composer
         key={sessionId ?? "new"}
         sessionId={sessionId}

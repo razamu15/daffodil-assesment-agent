@@ -1,10 +1,11 @@
 /**
  * Agreements: per helper, the editable details (key, how to pay, contact), the
- * terms in effect, earlier versions, and notes, each with its source.
+ * terms in effect or upcoming, past terms behind a toggle, and notes, each with
+ * its source.
  */
 import { useState } from "react";
 import { HelperStatus } from "@helper-assistant/domain";
-import type { AgreementTerm, Helper, HelperNote } from "@helper-assistant/domain";
+import type { AgreementTerm, Helper, HelperNote, LocalDate } from "@helper-assistant/domain";
 import { useApiQuery } from "../../app/AppContext";
 import { hrefFor, routes } from "../../app/routes";
 import { Loaded, StatusPill } from "../../ui/common";
@@ -65,9 +66,20 @@ function AgreementsView({ helpers, terms, notes, helperId }: AgreementsData & { 
   );
 }
 
+/** Today on this device, as a household-local date. Only decides what's shown, never what's charged. */
+const localToday = (): LocalDate => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
+
+/** Outdated: ended before today. A term that ends later (a rate already replaced from next month) is still current. */
+const isOutdated = (term: AgreementTerm, today: LocalDate): boolean => term.effectiveTo !== null && term.effectiveTo < today;
+
 function HelperDetail({ helper, terms, notes }: { helper: Helper; terms: AgreementTerm[]; notes: HelperNote[] }) {
-  const current = terms.filter((t) => t.effectiveTo === null);
-  const earlier = terms.filter((t) => t.effectiveTo !== null).sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+  const [showPast, setShowPast] = useState(false);
+  const today = localToday();
+  const current = terms.filter((t) => !isOutdated(t, today)).sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  const past = terms.filter((t) => isOutdated(t, today)).sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
   const keyReminder = helper.status === HelperStatus.ENDED ? KEY_REMINDER[helper.houseKeyAccess] : null;
   return (
     <>
@@ -100,14 +112,18 @@ function HelperDetail({ helper, terms, notes }: { helper: Helper; terms: Agreeme
         )}
       </section>
 
-      {earlier.length > 0 && (
+      {past.length > 0 && (
         <section>
-          <h3 className="section-title">Earlier versions</h3>
-          <div className="term-grid">
-            {earlier.map((t) => (
-              <TermCard key={t.termId} term={t} helper={helper} />
-            ))}
-          </div>
+          <button type="button" className="link-button" onClick={() => setShowPast(!showPast)} aria-expanded={showPast}>
+            {showPast ? "Hide past agreements" : `Show past agreements (${past.length})`}
+          </button>
+          {showPast && (
+            <div className="term-grid">
+              {past.map((t) => (
+                <TermCard key={t.termId} term={t} helper={helper} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 

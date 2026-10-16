@@ -1,8 +1,9 @@
 /**
- * Month & bills (home): "have the bills come?" One row per helper for the
+ * Home: one month at a time. "Have the bills come?": one row per helper for the
  * period, with its derived state, the first reason it was flagged, and the next
- * step; then every bill for the month (MonthBills). Beside it: small charts and
- * the assistant, so Jordan can drop things in without leaving the month.
+ * step; small charts; then every bill for the month (MonthBills). The assistant
+ * fills the right-hand side, so Jordan can drop things in without leaving.
+ * The page itself doesn't scroll; each card scrolls on its own (styles.css).
  * Starts empty with "Add what you have" guidance and the assistant (Product §7).
  */
 import { useState } from "react";
@@ -30,7 +31,7 @@ type MonthData = { status: MonthStatus; allBills: Bill[]; payments: PaymentRecor
  */
 let panelSessionId: Id | null = null;
 
-export function MonthScreen({ month }: { month: MonthKey | null }) {
+export function HomeScreen({ month }: { month: MonthKey | null }) {
   const query = useApiQuery(async (api): Promise<MonthData> => {
     const [status, { bills, payments }, { helpers }] = await Promise.all([
       api.call("getMonthStatus", { query: month === null ? {} : { month } }),
@@ -46,7 +47,6 @@ export function MonthScreen({ month }: { month: MonthKey | null }) {
           <div className="month-layout">
             <div className="month-main">{data.helpers.length === 0 ? <FirstRun /> : <MonthView {...data} />}</div>
             <aside className="month-side">
-              {data.helpers.length > 0 && <MonthCharts month={data.status.month} rows={data.status.rows} bills={data.allBills} helpers={data.helpers} />}
               <AssistantPanel />
             </aside>
           </div>
@@ -106,12 +106,12 @@ function MonthView({ status, allBills, payments, helpers }: MonthData) {
   return (
     <>
       <header className="month-head">
-        <a className="month-step" href={hrefFor(routes.month(addMonths(status.month, -1)))} aria-label="Previous month">
+        <a className="month-step" href={hrefFor(routes.home(addMonths(status.month, -1)))} aria-label="Previous month">
           ‹
         </a>
         <h1>{formatMonth(status.month)}</h1>
         {status.month < thisMonth ? (
-          <a className="month-step" href={hrefFor(routes.month(addMonths(status.month, 1)))} aria-label="Next month">
+          <a className="month-step" href={hrefFor(routes.home(addMonths(status.month, 1)))} aria-label="Next month">
             ›
           </a>
         ) : (
@@ -120,27 +120,30 @@ function MonthView({ status, allBills, payments, helpers }: MonthData) {
         <span className="today">Today: {formatLongDate(status.asOf)}</span>
       </header>
       {status.month >= thisMonth && <p className="muted">This month isn't over yet. Bills usually come at the start of next month.</p>}
+      <MonthCharts month={status.month} rows={status.rows} bills={allBills} helpers={helpers} />
 
-      {status.rows.length === 0 ? (
-        <p className="muted">No helpers were working in {formatMonth(status.month)}.</p>
-      ) : (
-        <ul className="month-rows">
-          {status.rows.map((row) => (
-            <MonthRow
-              key={row.helperId}
-              row={row}
-              asOf={status.asOf}
-              bill={row.billId === null ? null : (billById.get(row.billId) ?? null)}
-              onApprove={(bill) => setApproving({ bill, helper: helperById.get(row.helperId)! })}
-              onMarkPaid={(billId) => {
-                setPayingBillId(billId);
-                document.getElementById(`bill-${billId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-              }}
-            />
-          ))}
-        </ul>
-      )}
-      <footer className="month-foot">{waiting === 0 ? "Nothing waiting on you this month." : `Waiting on you: ${plural(waiting, "bill")}`}</footer>
+      <section className="month-card">
+        {status.rows.length === 0 ? (
+          <p className="muted">No helpers were working in {formatMonth(status.month)}.</p>
+        ) : (
+          <ul className="month-rows">
+            {status.rows.map((row) => (
+              <MonthRow
+                key={row.helperId}
+                row={row}
+                asOf={status.asOf}
+                bill={row.billId === null ? null : (billById.get(row.billId) ?? null)}
+                onApprove={(bill) => setApproving({ bill, helper: helperById.get(row.helperId)! })}
+                onMarkPaid={(billId) => {
+                  setPayingBillId(billId);
+                  document.getElementById(`bill-${billId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              />
+            ))}
+          </ul>
+        )}
+        <footer className="month-foot">{waiting === 0 ? "Nothing waiting on you this month." : `Waiting on you: ${plural(waiting, "bill")}`}</footer>
+      </section>
       <MonthBills month={status.month} bills={bills} payments={payments} helpers={helpers} payingBillId={payingBillId} onPay={setPayingBillId} />
       {approving !== null && <ApproveDialog bill={approving.bill} helper={approving.helper} onClose={() => setApproving(null)} />}
     </>
@@ -201,7 +204,7 @@ function MonthRow({ row, asOf, bill, onApprove, onMarkPaid }: MonthRowProps) {
               .slice(0, 2)
               .map((r) => `${r.titles}: ${r.short}`)
               .join(" · ")}
-            {reasons.length > 2 && <span className="muted"> · and {plural(reasons.length - 2, "more")}</span>}
+            {reasons.length > 2 && <span className="muted"> · and {reasons.length - 2} more</span>}
           </a>
         )}
         {row.askedHelperAt !== null && <span className="muted small">You asked {row.helperName} on {formatInstant(row.askedHelperAt)}</span>}

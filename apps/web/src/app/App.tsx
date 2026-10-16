@@ -11,7 +11,7 @@ import { BillScreen } from "../screens/bill/BillScreen";
 import { ChatScreen } from "../screens/chat/ChatScreen";
 import { DecisionsScreen } from "../screens/decisions/DecisionsScreen";
 import { LoginScreen } from "../screens/LoginScreen";
-import { MonthScreen } from "../screens/month/MonthScreen";
+import { HomeScreen } from "../screens/month/HomeScreen";
 import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { plural } from "../ui/format";
 import { AppProvider, LoadStatus, useApiQuery, useApp } from "./AppContext";
@@ -21,7 +21,7 @@ import type { Route } from "./routes";
 type ScreenViews = { [S in Screen]: (route: Extract<Route, { screen: S }>) => ReactNode };
 
 const SCREEN_VIEW: ScreenViews = {
-  [Screen.MONTH]: (r) => <MonthScreen month={r.month} />,
+  [Screen.HOME]: (r) => <HomeScreen month={r.month} />,
   [Screen.BILL]: (r) => <BillScreen billId={r.billId} />,
   [Screen.AGREEMENTS]: (r) => <AgreementsScreen helperId={r.helperId} />,
   [Screen.CHAT]: (r) => <ChatScreen sessionId={r.sessionId} draft={r.draft} />,
@@ -30,16 +30,19 @@ const SCREEN_VIEW: ScreenViews = {
     <section className="screen">
       <h1>Nothing here</h1>
       <p>
-        There's no page at <code>{r.hash}</code>. <a href={hrefFor(routes.month())}>Go to this month</a>.
+        There's no page at <code>{r.hash}</code>. <a href={hrefFor(routes.home())}>Go to this month</a>.
       </p>
     </section>
   ),
 };
 
+/** Screens laid out to fill the window: the page doesn't scroll, their cards do. */
+const FILL_SCREENS: readonly Screen[] = [Screen.HOME];
+
 /** Which nav item a screen belongs to. */
 const NAV_SECTION: Record<Screen, Screen | null> = {
-  [Screen.MONTH]: Screen.MONTH,
-  [Screen.BILL]: Screen.MONTH,
+  [Screen.HOME]: Screen.HOME,
+  [Screen.BILL]: Screen.HOME,
   [Screen.AGREEMENTS]: Screen.AGREEMENTS,
   [Screen.CHAT]: Screen.CHAT,
   [Screen.DECISIONS]: Screen.DECISIONS,
@@ -47,7 +50,7 @@ const NAV_SECTION: Record<Screen, Screen | null> = {
 };
 
 const NAV_ITEMS: { section: Screen; label: string; route: Route }[] = [
-  { section: Screen.MONTH, label: "Month & bills", route: routes.month() },
+  { section: Screen.HOME, label: "Home", route: routes.home() },
   { section: Screen.AGREEMENTS, label: "Agreements", route: routes.agreements() },
   { section: Screen.CHAT, label: "Assistant", route: routes.chat() },
 ];
@@ -77,9 +80,9 @@ function Shell() {
   const { route, hash } = useHashRoute();
   const section = NAV_SECTION[route.screen];
   return (
-    <div className="shell">
+    <div className={`shell${FILL_SCREENS.includes(route.screen) ? " fill" : ""}`}>
       <header className="topbar">
-        <a className="brand" href={hrefFor(routes.month())}>
+        <a className="brand" href={hrefFor(routes.home())}>
           Helper Assistant
         </a>
         <nav className="nav">

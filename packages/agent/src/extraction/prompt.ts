@@ -32,13 +32,13 @@ const AGREEMENT_RULES = `This document is read for AGREEMENTS: who the helpers a
   If a price changes ("starting the 15th my regular visit will be $150"), that is a new term version with its own effectiveFrom; set the earlier version's effectiveTo only if the document gives it.
 - effectiveFrom: the date the price starts. Use the message date when the price is agreed in that message with no other start, and say so in assumptions. null if there is no way to tell.
 - schedule: WEEKLY_ON with days, WEEKDAYS, AD_HOC ("no fixed schedule", said explicitly), or UNSPECIFIED (not said).
-- unencoded: anything agreed that these rule kinds can't express (a minimum, "$10 extra for a second child", a one-off swap of days). Never force it into the nearest rule. If a rate is referred to but its amount is not stated anywhere in this document ("my late rate"), do not invent it: put it in unencoded, quoting the reference exactly, so the assistant can match it to a rate from another source.
+- unencoded: anything agreed that these rule kinds can't express (a minimum, "$10 extra for a second child", a one-off swap of days). Never force it into the nearest rule. A rate named instead of stated ("my late rate", "my usual rate", "the weekend rate") means the rate this same document states under that description: encode it. E.g. "a flat $100 until 11, past 11 it's my late rate" in a thread that also says "after 10pm it's $28/hr" is FLAT_BLOCK $100 until 23:00 plus HOURLY_AFTER 23:00 at $28/hr, with an assumption that quotes both. Only when the amount is nowhere in this document, put it in unencoded, quoting the reference exactly, so the assistant can match it to a rate from another source.
 - A bill never defines terms. Neither does a claim like "Sam said that was fine".`;
 
 const BILL_RULES = `This document is read as a BILL: what the helper claims they are owed. Transcribe it; do not correct it.
 
 - lineItems: one entry per billed line, in order. lineKind: SERVICE for work, FEE for a fee, REIMBURSEMENT for money spent for the household, ADJUSTMENT for a credit or correction.
-- serviceKey: the helper's existing key for that service when the line is clearly that service; otherwise null. Never guess.
+- serviceKey: one of the helper's existing keys, or null. A line described by when or why the work happened ("after school", "Saturday night", "Sun 10am–2pm") rather than by a distinct service is the helper's regular hourly service: use that key. Use another existing key only when the line names that service ("date night"). null only when the line is none of the helper's services. Never invent a key.
 - label is the helper's own wording. serviceDate is the day of service when known.
 - startAt / endAt are full local datetimes when times are given. A line that runs past midnight ends on the next day ("Sat 9/12 7pm–12am" ends 2026-09-13T00:00).
 - quantity and unit only when the bill states a count or hours ("18 x $28" → 18, WALK), or a line is one dated visit or walk (1, VISIT / WALK). unitPriceBilledCents only when a per-unit price is written.

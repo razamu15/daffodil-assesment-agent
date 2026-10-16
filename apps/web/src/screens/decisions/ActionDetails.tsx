@@ -9,7 +9,8 @@ import { hrefFor, routes } from "../../app/routes";
 import { addDays } from "../../lib/dates";
 import { formatCents, formatLongDate, formatPeriod } from "../../ui/format";
 import { CONTACT_CHANNEL_LABEL, FINDING_TITLE, KEY_REMINDER, MESSAGE_REASON_LABEL } from "../../ui/labels";
-import { describeRule, describeSchedule } from "../../ui/rules";
+import { PricingTable } from "../../ui/PricingTable";
+import { describeRule } from "../../ui/rules";
 import { SourceToggle } from "../../ui/SourceDocumentView";
 
 export type DetailContext = {
@@ -22,14 +23,11 @@ export type DetailContext = {
 
 const rulesText = (term: Pick<TermContent, "pricingRules">) => term.pricingRules.map(describeRule).join(" · ");
 
-function TermProposal({ term }: { term: TermContent }) {
+/** The proposed term: its price as a table, the words it came from, and the source. */
+function TermProposal({ term, caption }: { term: TermContent; caption: string }) {
   return (
     <div className="proposal-term">
-      <div>
-        <span className="why-label">Proposed</span> {term.serviceLabel}: <strong>{rulesText(term)}</strong> ({describeSchedule(term.schedule)}), from{" "}
-        {formatLongDate(term.effectiveFrom)}
-        {term.effectiveTo !== null && <> to {formatLongDate(term.effectiveTo)}</>}
-      </div>
+      <PricingTable term={term} caption={`${caption}: ${term.serviceLabel}`} />
       <blockquote className="quote">“{term.sourceQuote}”</blockquote>
       <SourceToggle docId={term.sourceDocId} quote={term.sourceQuote} />
     </div>
@@ -53,8 +51,7 @@ const DETAILS: { [T in PendingActionTypeT]: Renderer<T> } = {
       const current = terms.find((t) => t.termId === change.currentTermId);
       return (
         <>
-          <span className="why-label">Earlier rate</span>
-          <TermProposal term={change.term} />
+          <TermProposal term={change.term} caption="Earlier rate" />
           {current !== undefined && change.term.effectiveTo !== null && (
             <p className="muted small">
               The current {current.serviceLabel} rate ({rulesText(current)}) will start {formatLongDate(addDays(change.term.effectiveTo, 1))} instead of {formatLongDate(current.effectiveFrom)}.
@@ -66,12 +63,8 @@ const DETAILS: { [T in PendingActionTypeT]: Renderer<T> } = {
     const replaced = change.change === AgreementChangeKind.REPLACE_TERM ? terms.find((t) => t.termId === change.supersedesTermId) : undefined;
     return (
       <>
-        {replaced !== undefined && (
-          <div>
-            <span className="why-label">Replaces</span> {replaced.serviceLabel}: {rulesText(replaced)}, from {formatLongDate(replaced.effectiveFrom)}
-          </div>
-        )}
-        <TermProposal term={change.term} />
+        {replaced !== undefined && <PricingTable term={replaced} caption={`Now: ${replaced.serviceLabel}`} />}
+        <TermProposal term={change.term} caption={replaced !== undefined ? "Proposed" : "New"} />
       </>
     );
   },

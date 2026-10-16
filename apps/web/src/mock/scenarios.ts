@@ -33,7 +33,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
   [ScenarioId.EMPTY]: {
     id: ScenarioId.EMPTY,
     shows: "First run: nothing added yet",
-    build: () => ({ world: new MockWorld(), start: routes.month() }),
+    build: () => ({ world: new MockWorld(), start: routes.home() }),
   },
   [ScenarioId.MONTH_MIXED]: {
     id: ScenarioId.MONTH_MIXED,
@@ -41,7 +41,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     build: () => {
       const world = starterWorld();
       addMarcoWithoutBill(world);
-      return { world, start: routes.month() };
+      return { world, start: routes.home() };
     },
   },
   [ScenarioId.BILL_FLAGGED]: {

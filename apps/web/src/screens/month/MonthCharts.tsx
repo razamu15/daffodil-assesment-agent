@@ -7,7 +7,7 @@
  * Hovering a bar shows its value (title), and the numbers are always on screen.
  * Replaced bills don't count: the corrected bill does.
  *
- * Call site: MonthScreen.
+ * Call site: HomeScreen.
  */
 import { BillStatus } from "@helper-assistant/domain";
 import type { Bill, Helper, MonthKey, MonthStatusRow } from "@helper-assistant/domain";

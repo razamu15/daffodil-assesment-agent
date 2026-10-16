@@ -1,14 +1,15 @@
 /**
  * Bill detail: verdict and reasons up top, then the source beside the
  * line-by-line check (Product §7, §8). Actions for an unapproved bill:
- * Approve when it checks out; otherwise "Ask {helper}" first and a quiet
- * "Approve anyway…". Approved bills render locked, with no edit controls.
+ * Approve when it checks out; otherwise "Resolve in chat" first (a new chat about
+ * this bill, where the assistant proposes fixes Jordan picks from), "Ask {helper}",
+ * and a quiet "Approve anyway…". Approved bills render locked, with no edit controls.
  */
 import { useState } from "react";
 import { BillStatus, BillVerdict } from "@helper-assistant/domain";
 import type { AgreementTerm, Bill, Helper, HelperNote, OutboundMessage, PaymentRecord, SourceDocument } from "@helper-assistant/domain";
 import { asClientError, useApiQuery, useApp } from "../../app/AppContext";
-import { startChat } from "../../app/chatActions";
+import { resolveBillInChat, startChat } from "../../app/chatActions";
 import { hrefFor, routes } from "../../app/routes";
 import { monthOf } from "../../lib/months";
 import { Assumptions, ErrorNote, Loaded } from "../../ui/common";
@@ -63,17 +64,19 @@ function BillView({ bill, terms, sourceDocument, payment, helper, helpers, messa
   const check = bill.approval?.checkSnapshot ?? bill.latestCheck;
   const isOpen = bill.status === BillStatus.RECEIVED && check !== null;
 
-  const askHelper = async () => {
+  const run = (action: () => Promise<void>) => async () => {
     try {
-      await startChat(api, `Draft a message to ${helper.name} about the problems on the ${formatPeriod(bill.period)} bill.`);
+      await action();
     } catch (e) {
       setError(asClientError(e).message);
     }
   };
+  const askHelper = run(() => startChat(api, `Draft a message to ${helper.name} about the problems on the ${formatPeriod(bill.period)} bill.`));
+  const resolveInChat = run(() => resolveBillInChat(api, { bill, check: check!, helper }));
 
   return (
     <>
-      <a className="back" href={hrefFor(routes.month(monthOf(bill.period.start)))}>
+      <a className="back" href={hrefFor(routes.home(monthOf(bill.period.start)))}>
         ‹ {formatPeriod(bill.period)}
       </a>
       <header className="bill-head">
@@ -107,7 +110,10 @@ function BillView({ bill, terms, sourceDocument, payment, helper, helpers, messa
             </button>
           ) : (
             <>
-              <button type="button" className="primary" onClick={askHelper}>
+              <button type="button" className="primary" onClick={resolveInChat}>
+                Resolve in chat
+              </button>
+              <button type="button" onClick={askHelper}>
                 Ask {helper.name} about this
               </button>
               <button type="button" className="quiet" onClick={() => setApproving(true)}>

@@ -100,7 +100,7 @@ export function LockedApproval({ bill, payment }: { bill: Bill; payment: Payment
       <p className="payment-line">
         {payment === null ? (
           <>
-            Not marked paid yet. <a href={hrefFor(routes.month(monthOf(bill.period.start)))}>Mark it as paid on its month</a> once you've paid.
+            Not marked paid yet. <a href={hrefFor(routes.home(monthOf(bill.period.start)))}>Mark it as paid on its month</a> once you've paid.
           </>
         ) : (
           <>

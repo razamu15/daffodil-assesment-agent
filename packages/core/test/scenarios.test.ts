@@ -150,6 +150,20 @@ describe("corrected bills", () => {
       code: CoreErrorCode.NOT_ALLOWED,
     });
   });
+
+  it("refuses a service key the helper doesn't have, naming the ones they do", async () => {
+    const deps = await starterPackDeps();
+    const afterSchool: ToolInput<"record_bill"> = {
+      ...correctedLupeBill,
+      docId: docIds.priyaBill,
+      helperId: helperIds.priya,
+      lineItems: [{ ...visit("2026-09-09", "after-school", 8800), unit: BillableUnit.HOUR, quantity: 4, startAt: "2026-09-09T15:00", endAt: "2026-09-09T19:00" }],
+      statedTotalCents: 8800,
+    };
+    const refused = recordBill(deps, afterSchool);
+    await expect(refused).rejects.toMatchObject({ code: CoreErrorCode.NOT_ALLOWED });
+    await expect(refused).rejects.toThrow(`"${serviceKeys.priyaStandard}"`);
+  });
 });
 
 describe("approval", () => {

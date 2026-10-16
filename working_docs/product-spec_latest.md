@@ -202,15 +202,15 @@ You weren't sure. Here's the reasoning.
 | Screen | Purpose |
 |---|---|
 | **Login** | One password |
-| **Month & bills** (home) | Status of every helper's bill for the period (the "have they come?" view), then every bill for the month, including approved, paid and replaced ones, with Mark as paid. Beside it: two small charts (billed per helper this month with the agreed amount, and billed per month for six months) and the assistant, so Jordan can drop things in without leaving the month |
-| **Bill detail** | Line-by-line check, verdict, source side-by-side, Approve / Ask helper |
-| **Agreements** | Per helper: current terms, history, source links. Helper details (key, how to pay), editable directly |
+| **Home** | One month: two small charts (billed per helper with the agreed amount, and billed per month for six months), the status of every helper's bill (the "have they come?" view), then every bill for the month, including approved, paid and replaced ones, with Mark as paid. The assistant fills the right-hand side. The page fits the window; each card scrolls on its own |
+| **Bill detail** | Line-by-line check, verdict, source side-by-side. Actions: Approve, or Resolve in chat (a new chat seeded with the bill and everything flagged, where the assistant proposes fixes Jordan picks from), Ask the helper, Approve anyway |
+| **Agreements** | Per helper: terms in effect or upcoming, each priced as a table (charge, amount, when it applies), with source links. Past terms are hidden behind "Show past agreements". Helper details (key, how to pay), editable directly |
 | **Assistant** (chat) | Paste text, attach files or a whole folder (images, text files, PDFs), or drop them in; ask. Pending cards appear inline. Decided cards fold into a read-only "Approved in this chat" panel on the side. Chat list on the other side. Unsent text and attachments are kept until sent |
 | **Decisions badge** | "3 things need you": pending confirmations |
 
 **Start state:** The app starts empty. The first screen says: *"Add what you have"* with the assistant right beside it, ready for the starter-pack folder.
 
-*Changed 2026-10-16:* Month and Bills were two screens; they're one now, because "has the bill come?" and "which bills are there?" are the same question.
+*Changed 2026-10-16:* Month and Bills were two screens; they're one now (Home), because "has the bill come?" and "which bills are there?" are the same question. Agreement cards show prices as a table, not a run-on line.
 
 ---
 

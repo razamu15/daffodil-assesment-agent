@@ -3,7 +3,7 @@
  * §7, P13): what used to be the Bills screen, now part of the month. Mark as
  * paid lives here, on approved bills.
  *
- * Call site: MonthScreen.
+ * Call site: HomeScreen.
  */
 import { BillStatus } from "@helper-assistant/domain";
 import type { Bill, Helper, Id, PaymentRecord } from "@helper-assistant/domain";

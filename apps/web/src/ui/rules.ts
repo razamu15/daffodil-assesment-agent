@@ -3,6 +3,8 @@
  * "Sundays: time and a half (base rate only)". One description per rule kind,
  * as a table.
  *
+ * describeRule is the one-line form (summaries); ruleRow is the table form (ui/PricingTable).
+ *
  * Call sites: Agreements (term cards), Decisions (agreement-change cards).
  */
 import { BillableUnit, DayOfWeek, MultiplierScope, PricingRuleKind, ScheduleKind } from "@helper-assistant/domain";
@@ -51,6 +53,26 @@ const PRICING_RULE_TEXT: RuleText = {
 };
 
 export const describeRule = (rule: PricingRule): string => (PRICING_RULE_TEXT[rule.kind] as (r: PricingRule) => string)(rule);
+
+/** One row of a pricing table: what is charged, how much, and when it applies. */
+export type RuleRow = { charge: string; amount: string; when: string };
+
+type RuleRows = { [K in PricingRule["kind"]]: (rule: Extract<PricingRule, { kind: K }>) => RuleRow };
+
+const PRICING_RULE_ROW: RuleRows = {
+  [PricingRuleKind.FLAT_PER_UNIT]: (r) => ({ charge: `Per ${UNIT_TEXT[r.unit]}`, amount: `${formatCents(r.amountCents)} / ${UNIT_TEXT[r.unit]}`, when: `Each ${UNIT_TEXT[r.unit]}` }),
+  [PricingRuleKind.HOURLY]: (r) => ({ charge: "Hourly rate", amount: `${formatCents(r.amountCents)} / hour`, when: "Hours no other rate covers" }),
+  [PricingRuleKind.HOURLY_AFTER]: (r) => ({ charge: "Late rate", amount: `${formatCents(r.amountCents)} / hour`, when: `From ${formatTime(r.afterTime)}` }),
+  [PricingRuleKind.DAY_MULTIPLIER]: (r) => ({
+    charge: `${DAY_NAME[r.dayOfWeek]} rate`,
+    amount: `× ${r.multiplier} (${multiplierText(r.multiplier)})`,
+    when: `${DAY_NAME[r.dayOfWeek]}s · applies to ${SCOPE_TEXT[r.appliesTo]}`,
+  }),
+  [PricingRuleKind.FLAT_BLOCK]: (r) => ({ charge: "Flat rate", amount: formatCents(r.amountCents), when: `From the start until ${formatTime(r.untilTime)}` }),
+  [PricingRuleKind.FEE]: (r) => ({ charge: r.label, amount: formatCents(r.amountCents), when: r.condition ?? "Always" }),
+};
+
+export const ruleRow = (rule: PricingRule): RuleRow => (PRICING_RULE_ROW[rule.kind] as (r: PricingRule) => RuleRow)(rule);
 
 type ScheduleText = { [K in ServiceSchedule["kind"]]: (s: Extract<ServiceSchedule, { kind: K }>) => string };
 

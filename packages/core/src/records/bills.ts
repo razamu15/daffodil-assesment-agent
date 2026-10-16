@@ -26,6 +26,7 @@ import type {
   AcceptedException,
   Bill,
   BillCheck,
+  Helper,
   Id,
   LineItem,
   PaymentRecord,
@@ -49,6 +50,23 @@ export type RecordBillResult = {
 };
 
 /** record_bill: saves a RECEIVED bill with its check already on it. */
+/**
+ * A line's serviceKey must name one of the helper's agreed services (or be null:
+ * "none of them"). An invented key ("after-school" for Priya's hourly babysitting)
+ * would make the checker report "no agreement" for work that is agreed, so it is
+ * refused here with the keys that exist.
+ */
+async function assertKnownServiceKeys(deps: CoreDeps, helper: Helper, lineItems: ToolInput<"record_bill">["lineItems"]): Promise<void> {
+  const known = [...new Set((await deps.store.listTerms({ helperId: helper.helperId })).map((t) => t.serviceKey))];
+  const unknown = [...new Set(lineItems.flatMap((l) => (l.serviceKey !== null && !known.includes(l.serviceKey) ? [l.serviceKey] : [])))];
+  if (unknown.length === 0) return;
+  throw new CoreError(
+    CoreErrorCode.NOT_ALLOWED,
+    `${helper.name} has no service ${unknown.map((k) => `"${k}"`).join(", ")}. Their services are: ${known.length === 0 ? "none yet" : known.map((k) => `"${k}"`).join(", ")}. ` +
+      "Use the existing key for a line that is that service (a line described by when or why it happened, like \"after school\" or \"Saturday night\", priced by the hour, is the helper's hourly service). Use null only for work that is none of their services. Nothing was saved.",
+  );
+}
+
 export async function recordBill(deps: CoreDeps, input: ToolInput<"record_bill">): Promise<RecordBillResult> {
   const { store, clock, newId } = deps;
   const [helper, document, helperBills] = await Promise.all([
@@ -58,6 +76,7 @@ export async function recordBill(deps: CoreDeps, input: ToolInput<"record_bill">
   ]);
   if (helper === null) throw notFound("Helper", input.helperId);
   if (document === null) throw notFound("Document", input.docId);
+  await assertKnownServiceKeys(deps, helper, input.lineItems);
 
   const samePeriod = helperBills.filter((b) => b.period.start === input.period.start && b.period.end === input.period.end);
   const approved = samePeriod.find((b) => b.status === BillStatus.APPROVED);

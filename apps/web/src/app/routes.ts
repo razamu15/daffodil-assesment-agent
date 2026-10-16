@@ -9,8 +9,8 @@
 import type { Id, MonthKey } from "@helper-assistant/domain";
 
 export const Screen = {
-  /** The month: its bills, charts and the assistant side by side. Bills have no screen of their own. */
-  MONTH: "MONTH",
+  /** Home: one month's bills and charts, with the assistant beside them. Bills have no list screen of their own. */
+  HOME: "HOME",
   BILL: "BILL",
   AGREEMENTS: "AGREEMENTS",
   CHAT: "CHAT",
@@ -21,7 +21,7 @@ export type Screen = (typeof Screen)[keyof typeof Screen];
 
 export type Route =
   /** month null = the API's default (most recent closed month). */
-  | { screen: typeof Screen.MONTH; month: MonthKey | null }
+  | { screen: typeof Screen.HOME; month: MonthKey | null }
   | { screen: typeof Screen.BILL; billId: Id }
   | { screen: typeof Screen.AGREEMENTS; helperId: Id | null }
   /** sessionId null = a new chat; draft prefills the composer ("Change this…" links). */
@@ -36,10 +36,10 @@ export function parseHash(hash: string): Route {
   const parts = pathPart.split("/").filter((p) => p !== "").map(decodeURIComponent);
   const query = new URLSearchParams(queryPart);
   const [first, second] = parts;
-  if (first === undefined || (first === "month" && second === undefined)) return { screen: Screen.MONTH, month: null };
-  if (first === "month" && second !== undefined && MONTH_PATTERN.test(second)) return { screen: Screen.MONTH, month: second };
+  if (first === undefined || (first === "month" && second === undefined)) return { screen: Screen.HOME, month: null };
+  if (first === "month" && second !== undefined && MONTH_PATTERN.test(second)) return { screen: Screen.HOME, month: second };
   // #/bills (the old Bills screen) now lands on the month, where bills are listed.
-  if (first === "bills") return second === undefined ? { screen: Screen.MONTH, month: null } : { screen: Screen.BILL, billId: second };
+  if (first === "bills") return second === undefined ? { screen: Screen.HOME, month: null } : { screen: Screen.BILL, billId: second };
   if (first === "agreements") return { screen: Screen.AGREEMENTS, helperId: second ?? null };
   if (first === "chat") return { screen: Screen.CHAT, sessionId: second ?? null, draft: query.get("draft") };
   if (first === "decisions") return { screen: Screen.DECISIONS };
@@ -50,7 +50,7 @@ const enc = encodeURIComponent;
 
 export function hrefFor(route: Route): string {
   switch (route.screen) {
-    case Screen.MONTH:
+    case Screen.HOME:
       return route.month === null ? "#/month" : `#/month/${route.month}`;
     case Screen.BILL:
       return `#/bills/${enc(route.billId)}`;
@@ -73,7 +73,7 @@ export const navigate = (route: Route): void => {
 
 /** Shorthands for the routes linked most often. */
 export const routes = {
-  month: (month: MonthKey | null = null): Route => ({ screen: Screen.MONTH, month }),
+  home: (month: MonthKey | null = null): Route => ({ screen: Screen.HOME, month }),
   bill: (billId: Id): Route => ({ screen: Screen.BILL, billId }),
   agreements: (helperId: Id | null = null): Route => ({ screen: Screen.AGREEMENTS, helperId }),
   chat: (sessionId: Id | null = null, draft: string | null = null): Route => ({ screen: Screen.CHAT, sessionId, draft }),
