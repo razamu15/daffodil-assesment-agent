@@ -36,6 +36,7 @@ import type {
   WriteOp,
 } from "@helper-assistant/domain";
 import { checkStoredBill } from "../checker/checkStoredBill";
+import { helperServices } from "../helperServices";
 import type { CoreDeps } from "../deps";
 import { CoreError, CoreErrorCode, notFound } from "../errors";
 import { actionWrite, resolvedAction } from "../actions/pipeline";
@@ -51,13 +52,13 @@ export type RecordBillResult = {
 
 /** record_bill: saves a RECEIVED bill with its check already on it. */
 /**
- * A line's serviceKey must name one of the helper's agreed services (or be null:
- * "none of them"). An invented key ("after-school" for Priya's hourly babysitting)
- * would make the checker report "no agreement" for work that is agreed, so it is
- * refused here with the keys that exist.
+ * A line's serviceKey must name one of the helper's services, agreed or proposed
+ * and waiting for Jordan (helperServices), or be null: "none of them". An invented
+ * key ("after-school" for Priya's hourly babysitting) would make the checker report
+ * "no agreement" for work that is agreed, so it is refused with the keys that exist.
  */
 async function assertKnownServiceKeys(deps: CoreDeps, helper: Helper, lineItems: ToolInput<"record_bill">["lineItems"]): Promise<void> {
-  const known = [...new Set((await deps.store.listTerms({ helperId: helper.helperId })).map((t) => t.serviceKey))];
+  const known = (await helperServices(deps, helper.helperId)).map((s) => s.serviceKey);
   const unknown = [...new Set(lineItems.flatMap((l) => (l.serviceKey !== null && !known.includes(l.serviceKey) ? [l.serviceKey] : [])))];
   if (unknown.length === 0) return;
   throw new CoreError(

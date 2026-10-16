@@ -117,14 +117,13 @@ export const DOCUMENT_KIND_LABEL: Record<DocumentKindT, string> = {
   [DocumentKind.CHAT_STATEMENT]: "Something you told the assistant",
   [DocumentKind.BILL_TEXT]: "Bill (text)",
   [DocumentKind.BILL_SCREENSHOT]: "Bill (screenshot)",
-  [DocumentKind.AGREEMENT_PDF]: "Agreement or letter (PDF)",
-  [DocumentKind.BILL_PDF]: "Bill (PDF)",
+  [DocumentKind.TEXT_FILE]: "File (text)",
+  [DocumentKind.IMAGE_FILE]: "File (image)",
+  [DocumentKind.PDF_FILE]: "File (PDF)",
 };
 
-/** Which kinds Jordan can pick per attached format. CHAT_STATEMENT is made by the assistant, not picked. */
+/** What Jordan can say pasted text is. Files aren't picked: they're typed by format (lib/fileIntake.ts). */
 export const TEXT_UPLOAD_KINDS: readonly DocumentKindT[] = [DocumentKind.TYPED_NOTES, DocumentKind.PASTED_THREAD, DocumentKind.BILL_TEXT];
-export const IMAGE_UPLOAD_KINDS: readonly DocumentKindT[] = [DocumentKind.THREAD_SCREENSHOT, DocumentKind.BILL_SCREENSHOT];
-export const PDF_UPLOAD_KINDS: readonly DocumentKindT[] = [DocumentKind.AGREEMENT_PDF, DocumentKind.BILL_PDF];
 
 export const ACTION_TYPE_LABEL: Record<PendingActionTypeT, string> = {
   [PendingActionType.AGREEMENT_CHANGE]: "Agreement change",

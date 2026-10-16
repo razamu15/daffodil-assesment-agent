@@ -3,9 +3,8 @@
  * images (resized), text files (read as text) and PDFs (sent as they are).
  * Anything else comes back as unsupported with the reason, never silently dropped.
  *
- * Each file gets a suggested document kind from its format and name (FORMAT_INTAKE,
- * KIND_BY_NAME). It's only a suggestion: the composer shows it as an editable
- * "What is this?" choice before anything is sent.
+ * Each file's document kind says only its format (KIND_BY_FORMAT). Whether it's
+ * notes, a thread or a bill is read from its contents by the assistant.
  *
  * Call sites: chat/Composer.tsx (file picker, folder picker, drag and drop).
  */
@@ -32,26 +31,12 @@ function formatOf(file: File): FileFormat | null {
   return null;
 }
 
-/** Words in a file name that suggest what it is. */
-const KIND_BY_NAME = {
-  bill: /bill|invoice|receipt|statement/i,
-  notes: /note/i,
+/** A file is typed by its format only; the assistant reads what it is from the contents. */
+const KIND_BY_FORMAT: Record<FileFormat, DocumentKindT> = {
+  [FileFormat.IMAGE]: DocumentKind.IMAGE_FILE,
+  [FileFormat.TEXT]: DocumentKind.TEXT_FILE,
+  [FileFormat.PDF]: DocumentKind.PDF_FILE,
 };
-
-/** The suggested kind per format: a name that reads like a bill, else the format's usual kind. */
-const FORMAT_INTAKE: Record<FileFormat, { billKind: DocumentKindT; otherKind: (name: string) => DocumentKindT }> = {
-  [FileFormat.IMAGE]: { billKind: DocumentKind.BILL_SCREENSHOT, otherKind: () => DocumentKind.THREAD_SCREENSHOT },
-  [FileFormat.TEXT]: {
-    billKind: DocumentKind.BILL_TEXT,
-    otherKind: (name) => (KIND_BY_NAME.notes.test(name) ? DocumentKind.TYPED_NOTES : DocumentKind.PASTED_THREAD),
-  },
-  [FileFormat.PDF]: { billKind: DocumentKind.BILL_PDF, otherKind: () => DocumentKind.AGREEMENT_PDF },
-};
-
-export function suggestedKind(format: FileFormat, name: string): DocumentKindT {
-  const intake = FORMAT_INTAKE[format];
-  return KIND_BY_NAME.bill.test(name) ? intake.billKind : intake.otherKind(name);
-}
 
 function base64Of(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -64,7 +49,7 @@ export async function intakeFile(file: File): Promise<IntakeResult> {
   const name = file.webkitRelativePath || file.name;
   const format = formatOf(file);
   if (format === null) return { name, unsupported: "Only images, text files and PDFs can be read." };
-  const kind = suggestedKind(format, file.name);
+  const kind = KIND_BY_FORMAT[format];
   try {
     if (format === FileFormat.IMAGE) {
       const { mediaType, base64 } = await resizeImageForUpload(file);

@@ -1,20 +1,20 @@
 /**
  * The chat composer: text, plus documents to attach. Files and whole folders can
  * be picked or dropped (lib/fileIntake.ts reads images, text files and PDFs);
- * text can also be pasted. Each attachment shows a suggested kind Jordan can
- * change. Attachments are uploaded first (POST /api/documents), then the turn
+ * the assistant works out what each file is from its contents. Pasted text says
+ * what it is (notes, a thread, a bill). Attachments are uploaded first (POST /api/documents), then the turn
  * starts with their ids. Unsent text and attachments are kept per chat until
  * sent (drafts.ts).
  */
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent, FormEvent } from "react";
-import { DocumentKind, DocumentStorage, PdfMediaTypeSchema } from "@helper-assistant/domain";
+import { DocumentKind, DocumentStorage } from "@helper-assistant/domain";
 import type { DocumentKind as DocumentKindT, Id, UploadDocumentRequest } from "@helper-assistant/domain";
 import { asClientError, useApp } from "../../app/AppContext";
 import { filesFromDrop, intakeFile, visibleFiles } from "../../lib/fileIntake";
 import type { UploadWithoutSession } from "../../lib/fileIntake";
 import { ErrorNote } from "../../ui/common";
-import { DOCUMENT_KIND_LABEL, IMAGE_UPLOAD_KINDS, PDF_UPLOAD_KINDS, TEXT_UPLOAD_KINDS } from "../../ui/labels";
+import { DOCUMENT_KIND_LABEL, TEXT_UPLOAD_KINDS } from "../../ui/labels";
 import { clearDraft, loadDraft, saveDraft } from "./drafts";
 import type { DraftAttachment } from "./drafts";
 
@@ -26,12 +26,6 @@ type Props = {
   /** Called with the new turn after it starts. */
   onStarted: (started: { sessionId: Id; turnId: Id }) => void;
 };
-
-/** Kinds Jordan can choose between for an attachment, by how it's stored. */
-function kindChoices(request: UploadWithoutSession): readonly DocumentKindT[] {
-  if (request.storage === DocumentStorage.INLINE_TEXT) return TEXT_UPLOAD_KINDS;
-  return PdfMediaTypeSchema.safeParse(request.mediaType).success ? PDF_UPLOAD_KINDS : IMAGE_UPLOAD_KINDS;
-}
 
 export function Composer({ sessionId, initialText, disabled, onStarted }: Props) {
   const { api } = useApp();
@@ -60,9 +54,6 @@ export function Composer({ sessionId, initialText, disabled, onStarted }: Props)
     for (const r of results) if ("request" in r) add(r.name, r.request);
     setUnsupported(results.flatMap((r) => ("unsupported" in r ? [{ name: r.name, reason: r.unsupported }] : [])));
   };
-
-  const setKind = (key: number, kind: DocumentKindT) =>
-    setAttachments((list) => list.map((a) => (a.key === key ? { ...a, request: { ...a.request, kind } as UploadWithoutSession } : a)));
 
   const send = async (event: FormEvent) => {
     event.preventDefault();
@@ -109,26 +100,17 @@ export function Composer({ sessionId, initialText, disabled, onStarted }: Props)
       onDrop={(e) => void onDrop(e)}
     >
       {attachments.length > 0 && (
-        <>
-          <p className="muted small">Check what each file is. The assistant reads bills and agreements differently.</p>
-          <ul className="attachments">
-            {attachments.map((a) => (
-              <li key={a.key}>
-                <span>{a.name}</span>
-                <select value={a.request.kind} onChange={(e) => setKind(a.key, e.target.value as DocumentKindT)} aria-label="What is this?">
-                  {kindChoices(a.request).map((k) => (
-                    <option key={k} value={k}>
-                      {DOCUMENT_KIND_LABEL[k]}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" className="link-button" onClick={() => setAttachments((list) => list.filter((x) => x.key !== a.key))}>
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="attachments">
+          {attachments.map((a) => (
+            <li key={a.key}>
+              <span aria-hidden="true">📄</span>
+              <span className="attachment-name">{a.name}</span>
+              <button type="button" className="link-button" onClick={() => setAttachments((list) => list.filter((x) => x.key !== a.key))}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
       {unsupported.length > 0 && (
         <ul className="attachments unsupported">

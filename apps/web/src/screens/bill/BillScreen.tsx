@@ -6,14 +6,14 @@
  * and a quiet "Approve anyway…". Approved bills render locked, with no edit controls.
  */
 import { useState } from "react";
-import { BillStatus, BillVerdict } from "@helper-assistant/domain";
-import type { AgreementTerm, Bill, Helper, HelperNote, OutboundMessage, PaymentRecord, SourceDocument } from "@helper-assistant/domain";
+import { AgreementChangeKind, BillStatus, BillVerdict, PendingActionStatus, PendingActionType } from "@helper-assistant/domain";
+import type { AgreementTerm, Bill, Helper, HelperNote, Id, OutboundMessage, PaymentRecord, PendingAction, SourceDocument } from "@helper-assistant/domain";
 import { asClientError, useApiQuery, useApp } from "../../app/AppContext";
 import { resolveBillInChat, startChat } from "../../app/chatActions";
 import { hrefFor, routes } from "../../app/routes";
 import { monthOf } from "../../lib/months";
 import { Assumptions, AssumptionsToggle, ErrorNote, Loaded } from "../../ui/common";
-import { formatCents, formatInstant, formatPeriod } from "../../ui/format";
+import { formatCents, formatInstant, formatPeriod, plural } from "../../ui/format";
 import { NOTE_KIND_LABEL } from "../../ui/labels";
 import { SourceDocumentView } from "../../ui/SourceDocumentView";
 import { MessageList } from "../decisions/MessageList";
@@ -30,19 +30,30 @@ type BillData = {
   helpers: Helper[];
   messages: OutboundMessage[];
   notes: HelperNote[];
+  /** This helper's agreement changes still waiting for Jordan: confirming them re-checks this bill. */
+  pendingAgreementChanges: number;
 };
+
+/** The helper an agreement change is about (END_TERM names a term, the others carry one). */
+function changeHelperId(action: PendingAction, terms: readonly AgreementTerm[]): Id | null {
+  if (action.type !== PendingActionType.AGREEMENT_CHANGE) return null;
+  const change = action.payload;
+  return change.change === AgreementChangeKind.END_TERM ? (terms.find((t) => t.termId === change.termId)?.helperId ?? null) : change.term.helperId;
+}
 
 export function BillScreen({ billId }: { billId: string }) {
   const query = useApiQuery(async (api): Promise<BillData> => {
     const detail = await api.call("getBill", { params: { id: billId } });
     const helperId = detail.bill.helperId;
-    const [{ helpers }, { messages }, { notes }] = await Promise.all([
+    const [{ helpers }, { messages }, { notes }, { actions }] = await Promise.all([
       api.call("listHelpers"),
       api.call("listMessages", { query: { helperId } }),
       api.call("listTerms", { query: { helperId } }),
+      api.call("listActions", { query: { status: PendingActionStatus.PENDING } }),
     ]);
     return {
       ...detail,
+      pendingAgreementChanges: actions.filter((a) => changeHelperId(a, detail.terms) === helperId).length,
       helper: helpers.find((h) => h.helperId === helperId)!,
       helpers,
       messages: messages.filter((m) => m.relatedBillId === billId),
@@ -56,7 +67,7 @@ export function BillScreen({ billId }: { billId: string }) {
   );
 }
 
-function BillView({ bill, terms, sourceDocument, payment, helper, helpers, messages, notes }: BillData) {
+function BillView({ bill, terms, sourceDocument, payment, helper, helpers, messages, notes, pendingAgreementChanges }: BillData) {
   const { api } = useApp();
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +100,12 @@ function BillView({ bill, terms, sourceDocument, payment, helper, helpers, messa
       </header>
 
       <SupersededNotice bill={bill} />
+      {bill.status === BillStatus.RECEIVED && pendingAgreementChanges > 0 && (
+        <p className="waiting-note">
+          {plural(pendingAgreementChanges, "agreement change")} for {helper.name} {pendingAgreementChanges === 1 ? "is" : "are"} waiting for you.{" "}
+          <a href={hrefFor(routes.decisions())}>Review {pendingAgreementChanges === 1 ? "it" : "them"}</a>. This bill is checked again as soon as you confirm.
+        </p>
+      )}
       {bill.status === BillStatus.APPROVED && <LockedApproval bill={bill} payment={payment} />}
       {check === null ? <p className="muted">This bill hasn't been checked yet.</p> : bill.status !== BillStatus.APPROVED && <CheckHeadline bill={bill} check={check} />}
 

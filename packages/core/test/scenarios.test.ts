@@ -12,11 +12,14 @@ import {
   BillPeriodKind,
   BillStatus,
   BillVerdict,
+  ContactChannel,
   DayOfWeek,
   ExceptionTarget,
   HelperStatus,
+  HouseKeyAccess,
   LineKind,
   LineStatus,
+  PaymentMethod,
   PendingActionStatus,
   PricingRuleKind,
   ProposeOutcome,
@@ -28,6 +31,7 @@ import {
   approveBill,
   confirmAction,
   CoreErrorCode,
+  createHelper,
   getMonthStatus,
   proposeAgreementChange,
   proposeBillApproval,
@@ -256,6 +260,56 @@ describe("agreement changes", () => {
     await expect(proposeAgreementChange(deps, add, testSource)).rejects.toMatchObject({ code: CoreErrorCode.NOT_ALLOWED });
     const replaceOld = { ...lupeRateChange(15500), change: { ...lupeRateChange(15500).change, supersedesTermId: termIds.lupeRegular140 } };
     await expect(proposeAgreementChange(deps, replaceOld, testSource)).rejects.toMatchObject({ code: CoreErrorCode.NOT_ALLOWED });
+  });
+});
+
+describe("a bill that arrives with its helper's rates", () => {
+  it("records against the proposed service, then prices itself when the rate is confirmed", async () => {
+    const deps = await starterPackDeps();
+    const marco = await createHelper(deps, {
+      name: "Marco",
+      role: "tutor",
+      houseKeyAccess: HouseKeyAccess.UNKNOWN,
+      payment: { method: PaymentMethod.UNKNOWN, handle: null },
+      contact: { channel: ContactChannel.UNKNOWN, handle: null },
+      startedOn: null,
+      notes: "",
+    });
+    const proposal = await proposeAgreementChange(
+      deps,
+      {
+        change: {
+          change: AgreementChangeKind.ADD_TERM,
+          term: {
+            helperId: marco.helperId,
+            serviceKey: "tutoring",
+            serviceLabel: "Tutoring",
+            pricingRules: [{ kind: PricingRuleKind.HOURLY, amountCents: 3000 }],
+            schedule: { kind: ScheduleKind.AD_HOC },
+            effectiveFrom: "2026-10-01",
+            effectiveTo: null,
+            sourceDocId: docIds.householdNotes,
+            sourceQuote: "Marco is $30 an hour",
+            assumptions: [],
+          },
+        },
+        sourceDocId: null,
+      },
+      testSource,
+    );
+    const { bill, check } = await recordBill(deps, {
+      ...correctedLupeBill,
+      docId: docIds.theoBill,
+      helperId: marco.helperId,
+      lineItems: [
+        { ...visit("2026-09-10", "tutoring", 6000), unit: BillableUnit.HOUR, quantity: 2, startAt: "2026-09-10T16:00", endAt: "2026-09-10T18:00" },
+      ],
+      statedTotalCents: 6000,
+    });
+    expect(check.lineChecks[0]!.status).toBe(LineStatus.NOT_COVERED);
+
+    await confirmAction(deps, { ref: proposal.action.ref, actionVersion: 1, messageBody: null });
+    expect((await deps.store.getBill(bill.billId))!.latestCheck!.lineChecks[0]).toMatchObject({ status: LineStatus.MATCHES, expectedCents: 6000 });
   });
 });
 

@@ -13,6 +13,7 @@
  *
  * Call site: the tool registry (extract_from_document).
  */
+import { helperServices } from "@helper-assistant/core";
 import { DocumentStorage, ExtractionKind, ImageMediaTypeSchema, ModelCallPurpose, ModelRole, PdfMediaTypeSchema, TERM_SOURCE_DOCUMENT_KINDS, ToolErrorCode } from "@helper-assistant/domain";
 import type {
   AgreementExtraction,
@@ -23,21 +24,25 @@ import type {
   ModelMessage,
   ModelRequest,
   SourceDocument,
-  DocumentKind,
 } from "@helper-assistant/domain";
 import { z } from "zod";
 import { EXTRACTION_MAX_TOKENS, EXTRACTION_REPAIR_ATTEMPTS, EXTRACTION_TEMPERATURE } from "../settings";
 import { tracedConverse } from "../model/tracedModel";
 import type { ToolContext, ToolHandlers } from "../tools/context";
 import { requireDocument } from "../tools/documents";
+import type { DocumentPurpose } from "../tools/documents";
 import { ToolFailure } from "../tools/errors";
 import { EXTRACTION_OUTPUT_TOOL } from "./outputTools";
 import { DOCUMENT_END, DOCUMENT_START, extractionContext, extractionSystemPrompt } from "./prompt";
 import type { KnownHelper } from "./prompt";
 
 /** Which documents each extraction kind may read. A bill never defines terms (Doc 3 §3.5); any document may be read as a bill. */
-const EXTRACTION_SOURCE: Record<ExtractionKindT, { allowedKinds: readonly DocumentKind[]; why: string } | null> = {
-  [ExtractionKind.AGREEMENT]: { allowedKinds: TERM_SOURCE_DOCUMENT_KINDS, why: "a bill is the helper's claim and is never read as an agreement." },
+const EXTRACTION_SOURCE: Record<ExtractionKindT, DocumentPurpose | null> = {
+  [ExtractionKind.AGREEMENT]: {
+    allowedKinds: TERM_SOURCE_DOCUMENT_KINDS,
+    why: "a bill is the helper's claim and is never read as an agreement.",
+    refuseIfRecordedAsBill: true,
+  },
   [ExtractionKind.BILL]: null,
 };
 
@@ -62,14 +67,13 @@ export const extractHandlers: Pick<ToolHandlers, "extract_from_document"> = {
   },
 };
 
+/** Each helper's services, agreed or proposed, so extraction reuses their keys (a bill can arrive with its rates). */
 async function knownHelpers(ctx: ToolContext, helpers: Helper[]): Promise<KnownHelper[]> {
-  const terms = await ctx.deps.store.listTerms();
+  const services = await helperServices(ctx.deps, null);
   return helpers.map((h) => ({
     name: h.name,
     role: h.role,
-    services: [...new Map(terms.filter((t) => t.helperId === h.helperId).map((t) => [t.serviceKey, t.serviceLabel])).entries()].map(
-      ([serviceKey, serviceLabel]) => ({ serviceKey, serviceLabel }),
-    ),
+    services: services.filter((s) => s.helperId === h.helperId).map(({ serviceKey, serviceLabel }) => ({ serviceKey, serviceLabel })),
   }));
 }
 

@@ -88,9 +88,14 @@ export const DocumentKindSchema = z.enum([
   "CHAT_STATEMENT",
   "BILL_TEXT",
   "BILL_SCREENSHOT",
-  /** A PDF Jordan uploaded that may hold terms (a written agreement, a letter). */
-  "AGREEMENT_PDF",
-  "BILL_PDF",
+  /**
+   * Files Jordan uploaded, known only by format. What each one is (notes, a thread,
+   * a bill) is read from its contents by the assistant; a file recorded as a bill
+   * can't then be the source of agreement terms (agent tools/documents.ts).
+   */
+  "TEXT_FILE",
+  "IMAGE_FILE",
+  "PDF_FILE",
 ]);
 export const DocumentKind = DocumentKindSchema.enum;
 export type DocumentKind = z.infer<typeof DocumentKindSchema>;

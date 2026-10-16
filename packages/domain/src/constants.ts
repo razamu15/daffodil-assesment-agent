@@ -23,19 +23,26 @@ export const SOURCE_PRECEDENCE_RANK: Record<DocumentKind, number> = {
   [DocumentKind.CHAT_STATEMENT]: 1,
   [DocumentKind.PASTED_THREAD]: 2,
   [DocumentKind.TYPED_NOTES]: 3,
-  [DocumentKind.AGREEMENT_PDF]: 2,
+  // Uploaded files, by what they usually are: an image is most often a screenshot of the helper's own message.
+  [DocumentKind.IMAGE_FILE]: 1,
+  [DocumentKind.TEXT_FILE]: 2,
+  [DocumentKind.PDF_FILE]: 2,
   [DocumentKind.BILL_TEXT]: 4,
   [DocumentKind.BILL_SCREENSHOT]: 4,
-  [DocumentKind.BILL_PDF]: 4,
 };
 
-/** Document kinds that can define agreement terms. */
+/**
+ * Document kinds that can define agreement terms. Uploaded files are known only by
+ * format, so they qualify unless recorded as a bill (checked where terms are cited).
+ */
 export const TERM_SOURCE_DOCUMENT_KINDS: readonly DocumentKind[] = [
   DocumentKind.THREAD_SCREENSHOT,
   DocumentKind.CHAT_STATEMENT,
   DocumentKind.PASTED_THREAD,
   DocumentKind.TYPED_NOTES,
-  DocumentKind.AGREEMENT_PDF,
+  DocumentKind.TEXT_FILE,
+  DocumentKind.IMAGE_FILE,
+  DocumentKind.PDF_FILE,
 ];
 
 // ── Verdict derivation (Doc 3 §3.3) ─────────────────────────────────────────

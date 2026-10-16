@@ -15,15 +15,21 @@ import type { DocumentKind as DocumentKindT, Id, SourceDocument } from "@helper-
 import type { ToolContext } from "./context";
 import { notFound, ToolFailure } from "./errors";
 
-export async function requireDocument(
-  ctx: ToolContext,
-  docId: Id,
-  purpose: { allowedKinds: readonly DocumentKindT[]; why: string } | null = null,
-): Promise<SourceDocument> {
+/**
+ * What a document is being used for. `refuseIfRecordedAsBill`: uploaded files are
+ * typed by format only, so "a bill never defines terms" is enforced by content:
+ * a document some bill was recorded from can't serve as an agreement source.
+ */
+export type DocumentPurpose = { allowedKinds: readonly DocumentKindT[]; why: string; refuseIfRecordedAsBill: boolean };
+
+export async function requireDocument(ctx: ToolContext, docId: Id, purpose: DocumentPurpose | null = null): Promise<SourceDocument> {
   const document = (await ctx.deps.store.getDocument(docId)) ?? (await saveStatementIfCited(ctx, docId));
   if (document === null) throw notFound("Document", docId);
   if (purpose !== null && !purpose.allowedKinds.includes(document.kind)) {
     throw new ToolFailure(ToolErrorCode.NOT_ALLOWED, `Document ${docId} is ${document.kind}: ${purpose.why}`);
+  }
+  if (purpose !== null && purpose.refuseIfRecordedAsBill && (await ctx.deps.store.listBills()).some((b) => b.sourceDocId === docId)) {
+    throw new ToolFailure(ToolErrorCode.NOT_ALLOWED, `Document ${docId} was recorded as a bill: ${purpose.why}`);
   }
   return document;
 }

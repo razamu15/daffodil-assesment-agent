@@ -89,7 +89,7 @@ notes, version
 
 #### SourceDocument
 ```
-docId, kind: TYPED_NOTES | THREAD_SCREENSHOT | PASTED_THREAD | BILL_TEXT | BILL_SCREENSHOT | AGREEMENT_PDF | BILL_PDF,
+docId, kind: TYPED_NOTES | THREAD_SCREENSHOT | PASTED_THREAD | BILL_TEXT | BILL_SCREENSHOT | TEXT_FILE | IMAGE_FILE | PDF_FILE,
 content (S3 key + image or PDF media type, or text), messageDate?, receivedAt, sessionId, messageId
 ```
 - *Why separate:* one thread often yields several terms (Lupe's thread gives regular, deep clean, and the later change). Terms point at the document instead of copying it.
@@ -97,7 +97,9 @@ content (S3 key + image or PDF media type, or text), messageDate?, receivedAt, s
 - *Passed on:* a `source` string on each fact. It duplicates, can't show the original, and can't be reused.
 - Immutable. Never edited.
 - *`fileName` (2026-10-16):* what Jordan's file was called, or null for pasted text and chat statements. It names the attachment in chat (and the chat itself when the first message is only files), and the model sees it too ("07-lupe-september-bill.png" is a useful hint).
-- *Formats (2026-10-16):* images and PDFs are stored as blobs (PDFs reach the model as a document block); any text file is stored as text. The UI suggests a kind from the file's format and name, and Jordan can change it before sending. Other formats are refused with a reason.
+- *Formats (2026-10-16):* images and PDFs are stored as blobs (PDFs reach the model as a document block); any text file is stored as text. Other formats are refused with a reason.
+- *Uploaded files are typed by format only* (TEXT_FILE, IMAGE_FILE, PDF_FILE): Jordan doesn't pick what a file is; the assistant reads it as an agreement or a bill from its contents. "A bill never defines terms" no longer rests on the kind Jordan picked: a document that any bill was recorded from can't be read as an agreement or cited as a term source (`refuseIfRecordedAsBill`). Pasted text still says what it is.
+- *A bill with its helper's rates in one message:* a bill line may name a service that's only proposed so far (`helperServices`: AGREED or PROPOSED). The bill is recorded against those keys, shows as not covered until Jordan confirms the agreement cards, and is re-checked by the confirm itself. The bill screen says the agreement changes are waiting.
 
 #### AgreementTerm
 ```

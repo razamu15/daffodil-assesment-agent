@@ -19,6 +19,7 @@ import type { ProposeResult } from "@helper-assistant/domain";
 import type { ToolContext, ToolHandlers } from "./context";
 import { actionSource } from "./context";
 import { requireDocument } from "./documents";
+import type { DocumentPurpose } from "./documents";
 
 type ProposeHandlers = Pick<
   ToolHandlers,
@@ -26,7 +27,11 @@ type ProposeHandlers = Pick<
 >;
 
 /** A bill is a claim and never defines terms (Doc 3 §3.5). */
-const TERM_SOURCE = { allowedKinds: TERM_SOURCE_DOCUMENT_KINDS, why: "a bill is the helper's claim and can't define or end agreement terms." };
+const TERM_SOURCE: DocumentPurpose = {
+  allowedKinds: TERM_SOURCE_DOCUMENT_KINDS,
+  why: "a bill is the helper's claim and can't define or end agreement terms.",
+  refuseIfRecordedAsBill: true,
+};
 
 function proposed(ctx: ToolContext, result: ProposeResult): ProposeResult {
   ctx.trace.proposedActionRefs.push(result.action.ref);

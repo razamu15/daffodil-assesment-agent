@@ -4,7 +4,7 @@
  *
  * Call site: the tool registry.
  */
-import { checkBillById, getMonthStatus, isInEffectOn, previousMonth, sumOfLinesCentsOf } from "@helper-assistant/core";
+import { checkBillById, getMonthStatus, helperServices, isInEffectOn, previousMonth, sumOfLinesCentsOf } from "@helper-assistant/core";
 import { NoteKind, NoteStatus, SOURCE_PRECEDENCE_RANK } from "@helper-assistant/domain";
 import type { Helper, Id, Store } from "@helper-assistant/domain";
 import type { ToolHandlers } from "./context";
@@ -22,15 +22,16 @@ async function requireHelper(store: Store, helperId: Id): Promise<Helper> {
 }
 
 export const readHandlers: ReadHandlers = {
-  /** Each helper with the service keys their terms use, so bill lines can reuse them. */
-  list_helpers: async (_input, { deps: { store } }) => {
-    const [helpers, terms] = await Promise.all([store.listHelpers(), store.listTerms()]);
+  /**
+   * Each helper with their service keys, so bill lines can reuse them: AGREED
+   * (a saved term) or PROPOSED (an agreement change waiting for Jordan).
+   */
+  list_helpers: async (_input, { deps }) => {
+    const [helpers, services] = await Promise.all([deps.store.listHelpers(), helperServices(deps, null)]);
     return {
       helpers: helpers.map((helper) => ({
         ...helper,
-        services: [...new Map(terms.filter((t) => t.helperId === helper.helperId).map((t) => [t.serviceKey, t.serviceLabel])).entries()].map(
-          ([serviceKey, serviceLabel]) => ({ serviceKey, serviceLabel }),
-        ),
+        services: services.filter((s) => s.helperId === helper.helperId).map(({ serviceKey, serviceLabel, status }) => ({ serviceKey, serviceLabel, status })),
       })),
     };
   },

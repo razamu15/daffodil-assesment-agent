@@ -34,6 +34,8 @@ export type { ApplyOptions, ApplyPlan } from "./actions/apply";
 export { confirmAction, rejectAction, withdrawAction } from "./actions/resolve";
 export type { ConfirmInput } from "./actions/resolve";
 export { earliestVersion, slotOccupant } from "./termVersions";
+export { helperServices, ServiceStatus } from "./helperServices";
+export type { HelperService } from "./helperServices";
 export { describeRule, describeRules } from "./actions/describe";
 
 export { billedCentsOf, sumOfLinesCentsOf } from "./records/billAmounts";
