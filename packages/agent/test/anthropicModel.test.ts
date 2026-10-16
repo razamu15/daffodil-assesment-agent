@@ -83,6 +83,14 @@ describe("AnthropicModel", () => {
     expect(() => fromAnthropicMessage(message({ content: [{ type: "thinking" } as Anthropic.ContentBlock] }))).toThrow(/doesn't handle/);
   });
 
+  it("sends a PDF as a base64 document block", () => {
+    const params = toAnthropicParams("m", {
+      ...request,
+      messages: [{ role: "user", content: [{ type: "document", mediaType: "application/pdf", bytes: new Uint8Array([1, 2]), name: "document doc-1" }] }],
+    });
+    expect(params.messages[0]!.content).toEqual([{ type: "document", title: "document doc-1", source: { type: "base64", media_type: "application/pdf", data: "AQI=" } }]);
+  });
+
   it("needs a model ID; there is no default", () => {
     expect(() => new AnthropicModel({ create: async () => message({}) }, " ")).toThrow();
   });

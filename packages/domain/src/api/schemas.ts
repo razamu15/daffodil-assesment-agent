@@ -3,7 +3,8 @@
  * Used by api (validation at the boundary), web (typed client) and the mock server.
  */
 import { z } from "zod";
-import { DocumentKindSchema, DocumentStorage, ImageMediaTypeSchema, PaymentMethodSchema } from "../enums";
+import { UPLOAD_MAX_TEXT_CHARS } from "../constants";
+import { BlobMediaTypeSchema, DocumentKindSchema, DocumentStorage, PaymentMethodSchema } from "../enums";
 import { AgreementTermSchema } from "../entities/agreement";
 import { AcceptedExceptionSchema, BillSchema } from "../entities/bill";
 import { SourceDocumentSchema } from "../entities/document";
@@ -95,15 +96,15 @@ export const UploadDocumentRequestSchema = z.discriminatedUnion("storage", [
   z.object({
     storage: z.literal(DocumentStorage.INLINE_TEXT),
     kind: DocumentKindSchema,
-    text: z.string().min(1),
+    text: z.string().min(1).max(UPLOAD_MAX_TEXT_CHARS),
     messageDate: LocalDateSchema.nullable(),
     sessionId: IdSchema.nullable(),
   }),
   z.object({
     storage: z.literal(DocumentStorage.BLOB),
     kind: DocumentKindSchema,
-    mediaType: ImageMediaTypeSchema,
-    /** Resized by the UI first (UPLOAD_MAX_IMAGE_EDGE_PX). */
+    mediaType: BlobMediaTypeSchema,
+    /** Images are resized by the UI first (UPLOAD_MAX_IMAGE_EDGE_PX); PDFs go as they are. */
     base64: z.string().min(1),
     messageDate: LocalDateSchema.nullable(),
     sessionId: IdSchema.nullable(),

@@ -88,6 +88,8 @@ function toAnthropicBlock(block: ModelContentBlock): Anthropic.ContentBlockParam
       return { type: "text", text: block.text };
     case "image":
       return { type: "image", source: { type: "base64", media_type: block.mediaType, data: Buffer.from(block.bytes).toString("base64") } };
+    case "document":
+      return { type: "document", title: block.name, source: { type: "base64", media_type: block.mediaType, data: Buffer.from(block.bytes).toString("base64") } };
     case "toolUse":
       return { type: "tool_use", id: block.toolUseId, name: block.name, input: block.input };
     case "toolResult":

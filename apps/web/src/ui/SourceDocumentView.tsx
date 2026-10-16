@@ -1,11 +1,11 @@
 /**
- * The original document, as Jordan gave it: text verbatim, or the screenshot.
+ * The original document, as Jordan gave it: text verbatim, the screenshot, or the PDF.
  * "Source beside extraction" (Product §8).
  *
  * Call sites: Bill screen (bill source), Agreements (term sources), Decisions (card sources).
  */
 import { useState } from "react";
-import { DocumentStorage } from "@helper-assistant/domain";
+import { DocumentStorage, PdfMediaTypeSchema } from "@helper-assistant/domain";
 import type { Id } from "@helper-assistant/domain";
 import { useApiQuery } from "../app/AppContext";
 import { Loaded } from "./common";
@@ -25,7 +25,13 @@ export function SourceDocumentView({ docId, highlight }: { docId: Id; highlight?
           {document.content.storage === DocumentStorage.INLINE_TEXT ? (
             <pre className="source-text">{highlighted(document.content.text, highlight ?? null)}</pre>
           ) : blobBase64 === null ? (
-            <p className="muted">The image isn't available.</p>
+            <p className="muted">The file isn't available.</p>
+          ) : PdfMediaTypeSchema.safeParse(document.content.mediaType).success ? (
+            <object className="source-pdf" type="application/pdf" data={`data:application/pdf;base64,${blobBase64}`}>
+              <a href={`data:application/pdf;base64,${blobBase64}`} download={`${document.docId}.pdf`}>
+                Download the PDF
+              </a>
+            </object>
           ) : (
             <img className="source-image" alt={DOCUMENT_KIND_LABEL[document.kind]} src={`data:${document.content.mediaType};base64,${blobBase64}`} />
           )}

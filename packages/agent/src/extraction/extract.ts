@@ -13,7 +13,7 @@
  *
  * Call site: the tool registry (extract_from_document).
  */
-import { DocumentStorage, ExtractionKind, ModelCallPurpose, ModelRole, TERM_SOURCE_DOCUMENT_KINDS, ToolErrorCode } from "@helper-assistant/domain";
+import { DocumentStorage, ExtractionKind, ImageMediaTypeSchema, ModelCallPurpose, ModelRole, PdfMediaTypeSchema, TERM_SOURCE_DOCUMENT_KINDS, ToolErrorCode } from "@helper-assistant/domain";
 import type {
   AgreementExtraction,
   BillExtraction,
@@ -119,8 +119,13 @@ export async function extractDocument(ctx: ToolContext, document: SourceDocument
 async function documentBlock(ctx: ToolContext, document: SourceDocument): Promise<ModelContentBlock> {
   if (document.content.storage === DocumentStorage.INLINE_TEXT) return { type: "text", text: document.content.text };
   const blob = await ctx.deps.blobStore.get(document.content.blobKey);
-  if (blob === null) throw new ToolFailure(ToolErrorCode.INTERNAL, `The image for document ${document.docId} is missing from storage.`);
-  return { type: "image", mediaType: blob.mediaType, bytes: blob.bytes };
+  if (blob === null) throw new ToolFailure(ToolErrorCode.INTERNAL, `The file for document ${document.docId} is missing from storage.`);
+  const { mediaType, bytes } = blob;
+  if (PdfMediaTypeSchema.safeParse(mediaType).success) {
+    // Converse names must be letters, digits, spaces and hyphens; docIds are UUIDs or slugs.
+    return { type: "document", mediaType: "application/pdf", bytes, name: `document ${document.docId.replace(/[^A-Za-z0-9 -]/g, "-")}` };
+  }
+  return { type: "image", mediaType: ImageMediaTypeSchema.parse(mediaType), bytes };
 }
 
 const NAMES_BY_KIND: Record<ExtractionKindT, (extraction: Extraction) => (string | null)[]> = {

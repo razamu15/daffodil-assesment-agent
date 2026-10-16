@@ -4,13 +4,13 @@
  * original beside what was extracted.
  */
 import { z } from "zod";
-import { DocumentKindSchema, DocumentStorage, ImageMediaTypeSchema } from "../enums";
+import { BlobMediaTypeSchema, DocumentKindSchema, DocumentStorage } from "../enums";
 import { IdSchema, InstantSchema, LocalDateSchema } from "../primitives";
 
 export const DocumentContentSchema = z.discriminatedUnion("storage", [
   z.object({ storage: z.literal(DocumentStorage.INLINE_TEXT), text: z.string().min(1) }),
-  /** Image bytes live in the BlobStore under blobKey (S3 in AWS). */
-  z.object({ storage: z.literal(DocumentStorage.BLOB), blobKey: z.string().min(1), mediaType: ImageMediaTypeSchema }),
+  /** Image or PDF bytes live in the BlobStore under blobKey (S3 in AWS). */
+  z.object({ storage: z.literal(DocumentStorage.BLOB), blobKey: z.string().min(1), mediaType: BlobMediaTypeSchema }),
 ]);
 export type DocumentContent = z.infer<typeof DocumentContentSchema>;
 

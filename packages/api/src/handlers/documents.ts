@@ -24,7 +24,7 @@ export function documentHandlers(deps: AppDeps) {
       let content: DocumentContent;
       if (body.storage === DocumentStorage.BLOB) {
         if (body.base64.length > UPLOAD_MAX_BASE64_CHARS) {
-          throw new ApiFailure(ApiErrorCode.VALIDATION_FAILED, `The image is too large (over ${UPLOAD_MAX_BASE64_CHARS} base64 characters). Resize it first.`);
+          throw new ApiFailure(ApiErrorCode.VALIDATION_FAILED, `The file is too large (over ${UPLOAD_MAX_BASE64_CHARS} base64 characters, about ${Math.floor((UPLOAD_MAX_BASE64_CHARS * 3) / 4 / 1_000_000)} MB).`);
         }
         const bytes = base64ToBytes(body.base64);
         if (bytes === null) throw new ApiFailure(ApiErrorCode.VALIDATION_FAILED, "body.base64 isn't valid base64.");

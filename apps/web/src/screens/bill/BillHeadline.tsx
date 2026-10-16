@@ -6,6 +6,7 @@
 import { BillStatus, BillVerdict, ExceptionTarget } from "@helper-assistant/domain";
 import type { AcceptedException, Bill, BillCheck, PaymentRecord } from "@helper-assistant/domain";
 import { hrefFor, routes } from "../../app/routes";
+import { monthOf } from "../../lib/months";
 import { groupedReasons, informationalItems, itemsNeedingDecision, lineTitle } from "../../ui/checkItems";
 import { formatCents, formatInstant, formatLongDate, plural } from "../../ui/format";
 import { FINDING_TITLE, PAYMENT_METHOD_LABEL, RESOLVER_LABEL, VERDICT_VIEW } from "../../ui/labels";
@@ -99,7 +100,7 @@ export function LockedApproval({ bill, payment }: { bill: Bill; payment: Payment
       <p className="payment-line">
         {payment === null ? (
           <>
-            Not marked paid yet. <a href={hrefFor(routes.bills())}>Mark as paid on Bills</a> once you've paid.
+            Not marked paid yet. <a href={hrefFor(routes.month(monthOf(bill.period.start)))}>Mark it as paid on its month</a> once you've paid.
           </>
         ) : (
           <>

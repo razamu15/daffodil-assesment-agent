@@ -8,7 +8,6 @@ import { PendingActionStatus } from "@helper-assistant/domain";
 import type { ApiClient } from "../api/client";
 import { AgreementsScreen } from "../screens/agreements/AgreementsScreen";
 import { BillScreen } from "../screens/bill/BillScreen";
-import { BillsScreen } from "../screens/bills/BillsScreen";
 import { ChatScreen } from "../screens/chat/ChatScreen";
 import { DecisionsScreen } from "../screens/decisions/DecisionsScreen";
 import { LoginScreen } from "../screens/LoginScreen";
@@ -23,7 +22,6 @@ type ScreenViews = { [S in Screen]: (route: Extract<Route, { screen: S }>) => Re
 
 const SCREEN_VIEW: ScreenViews = {
   [Screen.MONTH]: (r) => <MonthScreen month={r.month} />,
-  [Screen.BILLS]: () => <BillsScreen />,
   [Screen.BILL]: (r) => <BillScreen billId={r.billId} />,
   [Screen.AGREEMENTS]: (r) => <AgreementsScreen helperId={r.helperId} />,
   [Screen.CHAT]: (r) => <ChatScreen sessionId={r.sessionId} draft={r.draft} />,
@@ -41,8 +39,7 @@ const SCREEN_VIEW: ScreenViews = {
 /** Which nav item a screen belongs to. */
 const NAV_SECTION: Record<Screen, Screen | null> = {
   [Screen.MONTH]: Screen.MONTH,
-  [Screen.BILLS]: Screen.BILLS,
-  [Screen.BILL]: Screen.BILLS,
+  [Screen.BILL]: Screen.MONTH,
   [Screen.AGREEMENTS]: Screen.AGREEMENTS,
   [Screen.CHAT]: Screen.CHAT,
   [Screen.DECISIONS]: Screen.DECISIONS,
@@ -50,8 +47,7 @@ const NAV_SECTION: Record<Screen, Screen | null> = {
 };
 
 const NAV_ITEMS: { section: Screen; label: string; route: Route }[] = [
-  { section: Screen.MONTH, label: "Month", route: routes.month() },
-  { section: Screen.BILLS, label: "Bills", route: routes.bills() },
+  { section: Screen.MONTH, label: "Month & bills", route: routes.month() },
   { section: Screen.AGREEMENTS, label: "Agreements", route: routes.agreements() },
   { section: Screen.CHAT, label: "Assistant", route: routes.chat() },
 ];

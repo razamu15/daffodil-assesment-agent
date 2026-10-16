@@ -47,6 +47,14 @@ describe("BedrockModel", () => {
     expect(input.inferenceConfig).toEqual({ maxTokens: 100, temperature: 0 });
   });
 
+  it("sends a PDF as a named document block", () => {
+    const input = toConverseInput("m", {
+      ...request,
+      messages: [{ role: "user", content: [{ type: "document", mediaType: "application/pdf", bytes: new Uint8Array([1]), name: "document doc-1" }] }],
+    });
+    expect(input.messages![0]!.content).toEqual([{ document: { format: "pdf", name: "document doc-1", source: { bytes: new Uint8Array([1]) } } }]);
+  });
+
   it("omits toolConfig when there are no tools", () => {
     expect(toConverseInput("m", { ...request, tools: [], toolChoice: null }).toolConfig).toBeUndefined();
   });

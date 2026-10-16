@@ -32,7 +32,7 @@ const AGREEMENT_RULES = `This document is read for AGREEMENTS: who the helpers a
   If a price changes ("starting the 15th my regular visit will be $150"), that is a new term version with its own effectiveFrom; set the earlier version's effectiveTo only if the document gives it.
 - effectiveFrom: the date the price starts. Use the message date when the price is agreed in that message with no other start, and say so in assumptions. null if there is no way to tell.
 - schedule: WEEKLY_ON with days, WEEKDAYS, AD_HOC ("no fixed schedule", said explicitly), or UNSPECIFIED (not said).
-- unencoded: anything agreed that these rule kinds can't express (a minimum, "$10 extra for a second child", a one-off swap of days). Never force it into the nearest rule. If a rate is referred to but its amount is not stated anywhere in this document, do not invent it: put it in unencoded.
+- unencoded: anything agreed that these rule kinds can't express (a minimum, "$10 extra for a second child", a one-off swap of days). Never force it into the nearest rule. If a rate is referred to but its amount is not stated anywhere in this document ("my late rate"), do not invent it: put it in unencoded, quoting the reference exactly, so the assistant can match it to a rate from another source.
 - A bill never defines terms. Neither does a claim like "Sam said that was fine".`;
 
 const BILL_RULES = `This document is read as a BILL: what the helper claims they are owed. Transcribe it; do not correct it.

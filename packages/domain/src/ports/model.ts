@@ -8,7 +8,7 @@
  * Call sites: the agent loop (with tools) and extract_from_document (no tools,
  * output forced through a single schema tool via toolChoice).
  */
-import type { ImageMediaType } from "../enums";
+import type { ImageMediaType, PdfMediaType } from "../enums";
 
 export const ModelRole = { USER: "user", ASSISTANT: "assistant" } as const;
 export type ModelRole = (typeof ModelRole)[keyof typeof ModelRole];
@@ -18,6 +18,8 @@ export type ModelToolResultContent = { type: "text"; text: string } | { type: "j
 export type ModelContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; mediaType: ImageMediaType; bytes: Uint8Array }
+  /** A PDF. `name` identifies it to the model (Converse requires one): letters, digits, spaces and hyphens. */
+  | { type: "document"; mediaType: PdfMediaType; bytes: Uint8Array; name: string }
   | { type: "toolUse"; toolUseId: string; name: string; input: unknown }
   | {
       type: "toolResult";

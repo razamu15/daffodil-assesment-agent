@@ -89,13 +89,14 @@ notes, version
 
 #### SourceDocument
 ```
-docId, kind: TYPED_NOTES | THREAD_SCREENSHOT | PASTED_THREAD | BILL_TEXT | BILL_SCREENSHOT,
-content (S3 key or text), messageDate?, receivedAt, sessionId, messageId
+docId, kind: TYPED_NOTES | THREAD_SCREENSHOT | PASTED_THREAD | BILL_TEXT | BILL_SCREENSHOT | AGREEMENT_PDF | BILL_PDF,
+content (S3 key + image or PDF media type, or text), messageDate?, receivedAt, sessionId, messageId
 ```
 - *Why separate:* one thread often yields several terms (Lupe's thread gives regular, deep clean, and the later change). Terms point at the document instead of copying it.
 - *Why `messageDate`:* "starting the 15th" can only be resolved against the date of the message.
 - *Passed on:* a `source` string on each fact. It duplicates, can't show the original, and can't be reused.
 - Immutable. Never edited.
+- *Formats (2026-10-16):* images and PDFs are stored as blobs (PDFs reach the model as a document block); any text file is stored as text. The UI suggests a kind from the file's format and name, and Jordan can change it before sending. Other formats are refused with a reason.
 
 #### AgreementTerm
 ```
@@ -105,6 +106,10 @@ sourceDocId, sourceQuote, assumptions[],
 supersedesTermId | null, createdByActionRef
 ```
 - *Why versioned rows (S1):* a rate change **closes** the old row and **adds** a new one. Bills are checked against the term in effect *on each line's date*.
+- *The earliest version covers the past (decided 2026-10-16):* a first rate's `effectiveFrom` is usually just the day it was written down, so the checker treats the earliest version of each service as also covering every date before it. Without this, opening the app on the 15th and saving a rate would make the first half of the month look uncovered. Only the earliest version reaches back; later versions start on their own date.
+  - *Passed on:* an explicit "open start" value on `effectiveFrom` (most precise, much larger change), and a `startBasis` flag (keeps a date that means "when we learned it").
+  - *Known edge:* a first rate whose start *was* stated ("we start Sept 1") also covers earlier dates. Acceptable: bills before a helper started are rare, and Jordan sees the bill anyway.
+- *ADD_EARLIER_TERM:* when Jordan later learns an older rate, one confirmed change adds it (with its `effectiveTo`) and moves the earliest saved version's `effectiveFrom` to the day after. That's the only change besides closing that edits an existing row (version bumped).
 - *Why `serviceKey` (a per-helper slug like `date-night`), not a global enum:* new helper types bring new services. The key only has to match between a term and a bill line. Extraction is given the helper's existing keys so it reuses them.
 - *Why one term per `serviceKey`:* Lupe's regular visit changed and her deep clean didn't. They move independently.
 - *Why `sourceQuote` and `assumptions[]`:* every number can show its "why". "Assumed Sep 15" is data, not a hidden guess.

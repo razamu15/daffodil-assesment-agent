@@ -82,9 +82,15 @@ describe("coverage", () => {
     expect(result.agreedTotalCents).toBe(0);
   });
 
-  it("a line dated before any version of its term is NOT_COVERED", () => {
+  it("a line dated before the earliest version of its term is priced by that version (the first rate is assumed to have always applied)", () => {
     const early = line({ serviceDate: "2026-06-01", startAt: "2026-06-01T15:00", endAt: "2026-06-01T19:00" });
-    expect(check(billWith(priyaBill, [early]), priyaTerms).lineChecks[0]!.status).toBe(LineStatus.NOT_COVERED);
+    expect(check(billWith(priyaBill, [early]), priyaTerms).lineChecks[0]).toMatchObject({ status: LineStatus.MATCHES, appliedTermIds: [standard.termId] });
+  });
+
+  it("only the earliest version reaches back: a later version still starts on its own date", () => {
+    const beforeEverything = { ...lupeBill.lineItems[0]!, serviceDate: "2025-12-02" };
+    const [result] = check(billWith(lupeBill, [beforeEverything]), lupeTerms).lineChecks;
+    expect(result!.appliedTermIds).toEqual([termIds.lupeRegular140]);
   });
 
   it("an undated line in a period where the rate changed is CANNOT_COMPUTE", () => {

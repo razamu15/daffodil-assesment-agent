@@ -23,8 +23,10 @@ export const SOURCE_PRECEDENCE_RANK: Record<DocumentKind, number> = {
   [DocumentKind.CHAT_STATEMENT]: 1,
   [DocumentKind.PASTED_THREAD]: 2,
   [DocumentKind.TYPED_NOTES]: 3,
+  [DocumentKind.AGREEMENT_PDF]: 2,
   [DocumentKind.BILL_TEXT]: 4,
   [DocumentKind.BILL_SCREENSHOT]: 4,
+  [DocumentKind.BILL_PDF]: 4,
 };
 
 /** Document kinds that can define agreement terms. */
@@ -33,6 +35,7 @@ export const TERM_SOURCE_DOCUMENT_KINDS: readonly DocumentKind[] = [
   DocumentKind.CHAT_STATEMENT,
   DocumentKind.PASTED_THREAD,
   DocumentKind.TYPED_NOTES,
+  DocumentKind.AGREEMENT_PDF,
 ];
 
 // ── Verdict derivation (Doc 3 §3.3) ─────────────────────────────────────────
@@ -125,3 +128,5 @@ export const STORE_MAX_OPS_PER_COMMIT = 100;
 export const UPLOAD_MAX_IMAGE_EDGE_PX = 1500;
 /** Lambda's 6 MB payload limit, with headroom for base64 and JSON. */
 export const UPLOAD_MAX_BASE64_CHARS = 4_000_000;
+/** An uploaded text file or paste. Keeps one document well inside a DynamoDB item (400 KB). */
+export const UPLOAD_MAX_TEXT_CHARS = 200_000;

@@ -30,7 +30,7 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
 
   // PROPOSE
   propose_agreement_change:
-    "Propose adding (ADD_TERM), replacing (REPLACE_TERM) or ending (END_TERM) an agreement term. Creates a pending card Jordan must confirm in the app; nothing changes before that. A rate change for an existing service is REPLACE_TERM of its current term. Amounts in cents. Returns NEEDS_DECISION with conflicts when other pending proposals target the same service.",
+    "Propose adding (ADD_TERM), replacing (REPLACE_TERM) or ending (END_TERM) an agreement term, or adding a rate that applied before the earliest saved one (ADD_EARLIER_TERM: term.effectiveTo is its last day, currentTermId is the earliest saved term, whose start moves to the next day). Creates a pending card Jordan must confirm in the app; nothing changes before that. A rate change for an existing service is REPLACE_TERM of its current term. Amounts in cents. Returns NEEDS_DECISION with conflicts when other pending proposals target the same service.",
   propose_bill_approval:
     "Propose approving a bill for payment. Jordan confirms in the app. Every DISCREPANCY or NEEDS_INFO line or finding must be listed in acceptedExceptions with Jordan's own reason (e.g. after 'talked to Priya, the bill is correct'). The amount approved is always the sum of the lines, never the stated total.",
   propose_helper_message:

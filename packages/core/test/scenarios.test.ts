@@ -245,6 +245,51 @@ describe("agreement changes", () => {
   });
 });
 
+describe("an earlier rate (ADD_EARLIER_TERM)", () => {
+  const earlierPriyaRate = (currentTermId: string, effectiveTo: string | null) => ({
+    change: {
+      change: AgreementChangeKind.ADD_EARLIER_TERM,
+      currentTermId,
+      term: {
+        helperId: helperIds.priya,
+        serviceKey: serviceKeys.priyaStandard,
+        serviceLabel: "Babysitting",
+        pricingRules: [{ kind: PricingRuleKind.HOURLY, amountCents: 2000 }],
+        schedule: { kind: ScheduleKind.AD_HOC },
+        effectiveFrom: "2026-01-01",
+        effectiveTo,
+        sourceDocId: docIds.householdNotes,
+        sourceQuote: "Priya was $20/hr until June",
+        assumptions: [],
+      },
+    },
+    sourceDocId: null,
+  });
+
+  it("adds the earlier rate and moves the current rate's start to the day after it ends", async () => {
+    const deps = await starterPackDeps();
+    const proposal = await proposeAgreementChange(deps, earlierPriyaRate(termIds.priyaStandard, "2026-05-31"), testSource);
+    expect(proposal.action.summary).toContain("$20/hr until 2026-05-31");
+    expect((await confirmAction(deps, { ref: proposal.action.ref, actionVersion: 1, messageBody: null })).status).toBe(PendingActionStatus.CONFIRMED);
+
+    const standard = (await deps.store.listTerms({ helperId: helperIds.priya })).filter((t) => t.serviceKey === serviceKeys.priyaStandard);
+    expect(standard.map((t) => [t.effectiveFrom, t.effectiveTo, t.version])).toEqual(
+      expect.arrayContaining([
+        ["2026-01-01", "2026-05-31", 1],
+        ["2026-06-01", null, 2],
+      ]),
+    );
+  });
+
+  it("refuses an earlier rate with no end, or one placed before a version that isn't the earliest", async () => {
+    const deps = await starterPackDeps();
+    await expect(proposeAgreementChange(deps, earlierPriyaRate(termIds.priyaStandard, null), testSource)).rejects.toMatchObject({ code: CoreErrorCode.NOT_ALLOWED });
+    const lupe = earlierPriyaRate(termIds.lupeRegular150, "2026-01-01");
+    const notEarliest = { ...lupe, change: { ...lupe.change, term: { ...lupe.change.term, helperId: helperIds.lupe, serviceKey: serviceKeys.lupeRegular } } };
+    await expect(proposeAgreementChange(deps, notEarliest, testSource)).rejects.toMatchObject({ code: CoreErrorCode.NOT_ALLOWED });
+  });
+});
+
 describe("engagement end", () => {
   it("ending Lupe on Oct 14 reminds about the key and expects a final bill for Oct 1–14", async () => {
     const deps = await starterPackDeps();

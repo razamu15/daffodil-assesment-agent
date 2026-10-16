@@ -112,7 +112,10 @@ export const AgreementTermSchema = TermContentSchema.extend({
   supersedesTermId: IdSchema.nullable(),
   createdByActionRef: ActionRefSchema,
   createdAt: InstantSchema,
-  /** Bumped when the term is closed (effectiveTo set). Content is otherwise immutable. */
+  /**
+   * Bumped when the term is closed (effectiveTo set), or when an earlier rate is
+   * added before it (ADD_EARLIER_TERM moves effectiveFrom back). Content is otherwise immutable.
+   */
   version: VersionSchema,
 });
 export type AgreementTerm = z.infer<typeof AgreementTermSchema>;

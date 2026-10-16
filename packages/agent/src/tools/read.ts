@@ -4,9 +4,9 @@
  *
  * Call site: the tool registry.
  */
-import { checkBillById, getMonthStatus, previousMonth, sumOfLinesCentsOf } from "@helper-assistant/core";
+import { checkBillById, getMonthStatus, isInEffectOn, previousMonth, sumOfLinesCentsOf } from "@helper-assistant/core";
 import { NoteKind, NoteStatus, SOURCE_PRECEDENCE_RANK } from "@helper-assistant/domain";
-import type { AgreementTerm, Helper, Id, Store } from "@helper-assistant/domain";
+import type { Helper, Id, Store } from "@helper-assistant/domain";
 import type { ToolHandlers } from "./context";
 import { notFound } from "./errors";
 
@@ -20,9 +20,6 @@ async function requireHelper(store: Store, helperId: Id): Promise<Helper> {
   if (helper === null) throw notFound("Helper", helperId);
   return helper;
 }
-
-/** A term is in effect on `date` when the date falls in [effectiveFrom, effectiveTo]. */
-const inEffectOn = (term: AgreementTerm, date: string) => term.effectiveFrom <= date && (term.effectiveTo === null || date <= term.effectiveTo);
 
 export const readHandlers: ReadHandlers = {
   /** Each helper with the service keys their terms use, so bill lines can reuse them. */
@@ -42,7 +39,7 @@ export const readHandlers: ReadHandlers = {
   list_agreements: async ({ helperId, asOf }, { deps: { store } }) => {
     const helper = await requireHelper(store, helperId);
     const [terms, notes] = await Promise.all([store.listTerms({ helperId }), store.listNotes({ helperId })]);
-    const shown = asOf === null ? terms : terms.filter((t) => inEffectOn(t, asOf));
+    const shown = asOf === null ? terms : terms.filter((t) => isInEffectOn(t, asOf, terms));
     const documents = new Map(
       await Promise.all([...new Set(shown.map((t) => t.sourceDocId))].map(async (docId) => [docId, await store.getDocument(docId)] as const)),
     );

@@ -18,7 +18,7 @@ import type {
   ServiceSchedule,
 } from "@helper-assistant/domain";
 import { datesBetween, dayOfWeek } from "../calendar";
-import { isInEffectOn, lineDate, resolveTerm, TermResolutionKind } from "./terms";
+import { isInEffectOn, lineDate, overlapsPeriod, resolveTerm, TermResolutionKind } from "./terms";
 
 /** The days a schedule says the service usually happens. null = no fixed days (AD_HOC) or not known (UNSPECIFIED). */
 const USUAL_DAYS_BY_SCHEDULE: Record<ScheduleKind, (schedule: ServiceSchedule) => readonly DayOfWeek[] | null> = {
@@ -88,7 +88,7 @@ function occurrenceCountFindings(lines: readonly LineItem[], terms: readonly Agr
   const scheduledCount = new Map<ServiceKey, number>();
   for (const key of keys) {
     const count = dates.filter((date) => {
-      const term = terms.find((t) => t.serviceKey === key && isInEffectOn(t, date));
+      const term = terms.find((t) => t.serviceKey === key && isInEffectOn(t, date, terms));
       return term !== undefined && (usualDays(term)?.includes(dayOfWeek(date)) ?? false);
     }).length;
     if (count > 0) scheduledCount.set(key, count);
@@ -133,7 +133,7 @@ const BILLED_COUNT_BY_COUNTING: Record<OccurrenceCounting, (lines: readonly Line
 function perUnitOf(key: ServiceKey, terms: readonly AgreementTerm[], period: BillingPeriod): BillableUnit | null {
   const units = new Set(
     terms
-      .filter((t) => t.serviceKey === key && t.effectiveFrom <= period.end && (t.effectiveTo === null || period.start <= t.effectiveTo))
+      .filter((t) => t.serviceKey === key && overlapsPeriod(t, period, terms))
       .flatMap((t) => t.pricingRules.flatMap((r) => (r.kind === PricingRuleKind.FLAT_PER_UNIT ? [r.unit] : []))),
   );
   return units.size === 1 ? [...units][0]! : null;

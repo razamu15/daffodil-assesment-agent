@@ -21,6 +21,7 @@ import type { AgreementTerm, Id, PendingAction, PendingActionOf, PendingActionTy
 import { resolved, sealApproval } from "./actionFactory";
 import { withCheck } from "./checks";
 import type { MockWorld } from "./world";
+import { addDays } from "../lib/dates";
 
 function slotOccupant(world: MockWorld, helperId: Id, serviceKey: ServiceKey): AgreementTerm | null {
   const slot = world.terms
@@ -47,8 +48,6 @@ function staleReason(world: MockWorld, action: PendingAction): string | null {
   return null;
 }
 
-const dayBefore = (date: string): string => new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
-
 function addTerm(world: MockWorld, content: TermContent, supersedesTermId: Id | null, ref: number): void {
   world.terms.push({ ...content, termId: world.newId("term"), supersedesTermId, createdByActionRef: ref, createdAt: world.now(), version: 1 });
 }
@@ -56,6 +55,11 @@ function addTerm(world: MockWorld, content: TermContent, supersedesTermId: Id | 
 function closeTerm(world: MockWorld, termId: Id, effectiveTo: string): void {
   const term = world.terms.find((t) => t.termId === termId);
   if (term) world.replace(world.terms, (t) => t.termId === termId, { ...term, effectiveTo, version: term.version + 1 });
+}
+
+function startTermOn(world: MockWorld, termId: Id, effectiveFrom: string): void {
+  const term = world.terms.find((t) => t.termId === termId);
+  if (term) world.replace(world.terms, (t) => t.termId === termId, { ...term, effectiveFrom, version: term.version + 1 });
 }
 
 type Applier<T extends PendingActionTypeT> = (world: MockWorld, action: PendingActionOf<T>, messageBody: string | null) => void;
@@ -66,10 +70,14 @@ const APPLY_BY_TYPE: { [T in PendingActionTypeT]: Applier<T> } = {
     const helperId = change.change === AgreementChangeKind.END_TERM ? world.terms.find((t) => t.termId === change.termId)?.helperId : change.term.helperId;
     if (change.change === AgreementChangeKind.ADD_TERM) addTerm(world, change.term, null, action.ref);
     if (change.change === AgreementChangeKind.REPLACE_TERM) {
-      closeTerm(world, change.supersedesTermId, dayBefore(change.term.effectiveFrom));
+      closeTerm(world, change.supersedesTermId, addDays(change.term.effectiveFrom, -1));
       addTerm(world, change.term, change.supersedesTermId, action.ref);
     }
     if (change.change === AgreementChangeKind.END_TERM) closeTerm(world, change.termId, change.effectiveTo);
+    if (change.change === AgreementChangeKind.ADD_EARLIER_TERM && change.term.effectiveTo !== null) {
+      startTermOn(world, change.currentTermId, addDays(change.term.effectiveTo, 1));
+      addTerm(world, change.term, null, action.ref);
+    }
     // Open bills are re-checked against the new terms, as core does.
     world.bills = world.bills.map((b) => (b.status === BillStatus.RECEIVED && b.helperId === helperId ? withCheck(world, { ...b, version: b.version + 1 }) : b));
   },

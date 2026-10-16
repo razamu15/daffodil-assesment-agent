@@ -74,7 +74,7 @@ export const ScheduleKindSchema = z.enum(["WEEKLY_ON", "WEEKDAYS", "AD_HOC", "UN
 export const ScheduleKind = ScheduleKindSchema.enum;
 export type ScheduleKind = z.infer<typeof ScheduleKindSchema>;
 
-export const AgreementChangeKindSchema = z.enum(["ADD_TERM", "REPLACE_TERM", "END_TERM"]);
+export const AgreementChangeKindSchema = z.enum(["ADD_TERM", "REPLACE_TERM", "END_TERM", "ADD_EARLIER_TERM"]);
 export const AgreementChangeKind = AgreementChangeKindSchema.enum;
 export type AgreementChangeKind = z.infer<typeof AgreementChangeKindSchema>;
 
@@ -88,6 +88,9 @@ export const DocumentKindSchema = z.enum([
   "CHAT_STATEMENT",
   "BILL_TEXT",
   "BILL_SCREENSHOT",
+  /** A PDF Jordan uploaded that may hold terms (a written agreement, a letter). */
+  "AGREEMENT_PDF",
+  "BILL_PDF",
 ]);
 export const DocumentKind = DocumentKindSchema.enum;
 export type DocumentKind = z.infer<typeof DocumentKindSchema>;
@@ -98,6 +101,13 @@ export type DocumentStorage = z.infer<typeof DocumentStorageSchema>;
 
 export const ImageMediaTypeSchema = z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 export type ImageMediaType = z.infer<typeof ImageMediaTypeSchema>;
+
+export const PdfMediaTypeSchema = z.enum(["application/pdf"]);
+export type PdfMediaType = z.infer<typeof PdfMediaTypeSchema>;
+
+/** Everything a BLOB document can be: an image or a PDF. Text files are stored INLINE_TEXT. */
+export const BlobMediaTypeSchema = z.enum([...ImageMediaTypeSchema.options, ...PdfMediaTypeSchema.options]);
+export type BlobMediaType = z.infer<typeof BlobMediaTypeSchema>;
 
 /** What the quarantined extraction call is asked to read a document as. */
 export const ExtractionKindSchema = z.enum(["AGREEMENT", "BILL"]);

@@ -4,10 +4,17 @@
  * nothing was found, because "no agreement for this service at all", "not in
  * effect that day" and "can't tell which version" lead to different statuses.
  *
- * Call sites: lineChecks (pricing), plausibility (schedules in effect).
+ * The earliest saved version of a service also covers every date before its
+ * effectiveFrom: the first rate Jordan records is assumed to have always applied,
+ * because its effectiveFrom is usually just the day it was written down. Adding a
+ * rate from before it (ADD_EARLIER_TERM) moves that boundary explicitly.
+ *
+ * Call sites: lineChecks (pricing), plausibility (schedules in effect), the
+ * agent's list_agreements (terms in effect on a date).
  */
 import type { AgreementTerm, BillingPeriod, LineItem, LocalDate, ServiceKey } from "@helper-assistant/domain";
 import { dateOf } from "../calendar";
+import { earliestVersion } from "../termVersions";
 
 export const TermResolutionKind = {
   FOUND: "FOUND",
@@ -25,16 +32,24 @@ export type TermResolution =
   | { kind: typeof TermResolutionKind.NOT_IN_EFFECT; reason: string }
   | { kind: typeof TermResolutionKind.AMBIGUOUS; reason: string };
 
-export function isInEffectOn(term: AgreementTerm, date: LocalDate): boolean {
-  return term.effectiveFrom <= date && (term.effectiveTo === null || date <= term.effectiveTo);
+/** True when `term` starts on or before `date`. The earliest version of its service always does. */
+function startsBy(term: AgreementTerm, date: LocalDate, versions: readonly AgreementTerm[]): boolean {
+  return term.effectiveFrom <= date || earliestVersion(versions, term.helperId, term.serviceKey)?.termId === term.termId;
 }
 
-function coversWholePeriod(term: AgreementTerm, period: BillingPeriod): boolean {
-  return term.effectiveFrom <= period.start && (term.effectiveTo === null || period.end <= term.effectiveTo);
+const endsOnOrAfter = (term: AgreementTerm, date: LocalDate): boolean => term.effectiveTo === null || date <= term.effectiveTo;
+
+/** `versions` are the helper's terms (all versions), so the earliest of the service can be told apart. */
+export function isInEffectOn(term: AgreementTerm, date: LocalDate, versions: readonly AgreementTerm[]): boolean {
+  return startsBy(term, date, versions) && endsOnOrAfter(term, date);
 }
 
-function overlapsPeriod(term: AgreementTerm, period: BillingPeriod): boolean {
-  return term.effectiveFrom <= period.end && (term.effectiveTo === null || period.start <= term.effectiveTo);
+function coversWholePeriod(term: AgreementTerm, period: BillingPeriod, versions: readonly AgreementTerm[]): boolean {
+  return startsBy(term, period.start, versions) && endsOnOrAfter(term, period.end);
+}
+
+export function overlapsPeriod(term: AgreementTerm, period: BillingPeriod, versions: readonly AgreementTerm[]): boolean {
+  return startsBy(term, period.end, versions) && endsOnOrAfter(term, period.start);
 }
 
 /** The day a line happened: serviceDate, else the date of startAt, else unknown. */
@@ -58,17 +73,17 @@ export function resolveTerm(
   if (forService.length === 0) return { kind: TermResolutionKind.NO_TERM_FOR_SERVICE };
 
   if (date !== null) {
-    const inEffect = forService.filter((t) => isInEffectOn(t, date));
+    const inEffect = forService.filter((t) => isInEffectOn(t, date, terms));
     if (inEffect.length === 1) return { kind: TermResolutionKind.FOUND, term: inEffect[0]! };
     if (inEffect.length === 0) return { kind: TermResolutionKind.NOT_IN_EFFECT, reason: `No agreement for this service was in effect on ${date}.` };
     return { kind: TermResolutionKind.AMBIGUOUS, reason: `${inEffect.length} versions of this service's terms overlap on ${date}.` };
   }
 
-  const overlapping = forService.filter((t) => overlapsPeriod(t, period));
+  const overlapping = forService.filter((t) => overlapsPeriod(t, period, terms));
   if (overlapping.length === 0) {
     return { kind: TermResolutionKind.NOT_IN_EFFECT, reason: `No agreement for this service was in effect from ${period.start} to ${period.end}.` };
   }
-  if (overlapping.length === 1 && coversWholePeriod(overlapping[0]!, period)) {
+  if (overlapping.length === 1 && coversWholePeriod(overlapping[0]!, period, terms)) {
     return { kind: TermResolutionKind.FOUND, term: overlapping[0]! };
   }
   return {

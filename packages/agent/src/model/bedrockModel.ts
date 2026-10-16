@@ -106,6 +106,8 @@ function toBedrockBlock(block: ModelContentBlock): ContentBlock {
       return { text: block.text };
     case "image":
       return { image: { format: IMAGE_FORMAT_BY_MEDIA_TYPE[block.mediaType], source: { bytes: block.bytes } } };
+    case "document":
+      return { document: { format: "pdf", name: block.name, source: { bytes: block.bytes } } };
     case "toolUse":
       return { toolUse: { toolUseId: block.toolUseId, name: block.name, input: block.input as BedrockJson } };
     case "toolResult":

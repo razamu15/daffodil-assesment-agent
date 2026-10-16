@@ -2,7 +2,7 @@
  * The non-store seams (Doc 4 §2): Clock, BlobStore, MemoryClient, TurnRunner.
  * Each has a fake (local, tests) and a real (AWS) implementation.
  */
-import type { ImageMediaType } from "../enums";
+import type { BlobMediaType } from "../enums";
 import type { ChatMessage, MemoryHint } from "../entities/records";
 import type { Id, Instant, LocalDate } from "../primitives";
 
@@ -18,8 +18,8 @@ export interface Clock {
  * Keys are opaque strings chosen by the caller (api's upload handler).
  */
 export interface BlobStore {
-  put(key: string, bytes: Uint8Array, mediaType: ImageMediaType): Promise<void>;
-  get(key: string): Promise<{ bytes: Uint8Array; mediaType: ImageMediaType } | null>;
+  put(key: string, bytes: Uint8Array, mediaType: BlobMediaType): Promise<void>;
+  get(key: string): Promise<{ bytes: Uint8Array; mediaType: BlobMediaType } | null>;
 }
 
 /**

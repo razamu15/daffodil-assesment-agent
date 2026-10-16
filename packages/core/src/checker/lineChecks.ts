@@ -11,7 +11,7 @@ import type { AgreementTerm, Bill, Cents, LineCheck, LineItem, LocalDate, Pricin
 import { formatCents } from "../money";
 import { cannotCompute, PriceOutcome } from "./price";
 import type { Price } from "./price";
-import { isInEffectOn, lineDate, resolveTerm, TermResolutionKind } from "./terms";
+import { isInEffectOn, lineDate, overlapsPeriod, resolveTerm, TermResolutionKind } from "./terms";
 import { priceTimedLine } from "./timedPricing";
 import { normalizeFeeLabel, priceFeeLine, priceUnitLine } from "./unitPricing";
 import type { FeeRule } from "./unitPricing";
@@ -98,7 +98,7 @@ function checkFeeLine({ line, bill, terms, linesById }: LineInput): LineResult {
     if (resolution.kind === TermResolutionKind.AMBIGUOUS) return fromPrice(line, null, cannotCompute(resolution.reason));
     candidates = resolution.kind === TermResolutionKind.FOUND ? [resolution.term] : [];
   } else {
-    candidates = terms.filter((t) => inEffectForLine(t, date, bill));
+    candidates = terms.filter((t) => inEffectForLine(t, date, bill, terms));
   }
 
   const label = normalizeFeeLabel(line.label);
@@ -112,9 +112,8 @@ function checkFeeLine({ line, bill, terms, linesById }: LineInput): LineResult {
   return fromPrice(line, appliedTerm, priceFeeLine(line, matches.map((m) => m.rule)));
 }
 
-function inEffectForLine(term: AgreementTerm, date: LocalDate | null, bill: Bill): boolean {
-  if (date !== null) return isInEffectOn(term, date);
-  return term.effectiveFrom <= bill.period.end && (term.effectiveTo === null || bill.period.start <= term.effectiveTo);
+function inEffectForLine(term: AgreementTerm, date: LocalDate | null, bill: Bill, versions: readonly AgreementTerm[]): boolean {
+  return date !== null ? isInEffectOn(term, date, versions) : overlapsPeriod(term, bill.period, versions);
 }
 
 // ── LineCheck builders ─────────────────────────────────────────────────────

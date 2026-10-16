@@ -19,7 +19,7 @@ import {
   targetKeys,
 } from "@helper-assistant/domain";
 import type { AgreementTerm, Helper, HouseKeyAccess as HouseKeyAccessT, ProposeResult, ToolInput } from "@helper-assistant/domain";
-import { firstDayOfMonth, monthOf, rangesOverlap } from "../calendar";
+import { addDays, firstDayOfMonth, monthOf, rangesOverlap } from "../calendar";
 import { checkStoredBill } from "../checker/checkStoredBill";
 import { unacceptedBlockingItems } from "../checker/severity";
 import type { CoreDeps } from "../deps";
@@ -29,7 +29,8 @@ import { sumOfLinesCentsOf } from "../records/billAmounts";
 import { describeRules } from "./describe";
 import { proposeAction } from "./pipeline";
 import type { ActionDraft, ActionSource } from "./pipeline";
-import { slotOccupant, termSlotBasis } from "./termSlot";
+import { earliestVersion, slotOccupant } from "../termVersions";
+import { termSlotBasis } from "./termSlot";
 
 type Deps = Pick<CoreDeps, "store" | "clock">;
 
@@ -86,6 +87,16 @@ export async function proposeAgreementChange(
       throw notAllowed(`The replacement must start after the current term (from ${replaced.effectiveFrom}).`);
     }
     summary = `${helper.name}: ${replaced.serviceLabel} ${describeRules(replaced)} → ${describeRules(change.term)} from ${change.term.effectiveFrom}`;
+  } else if (change.change === AgreementChangeKind.ADD_EARLIER_TERM) {
+    const current = assertEarliest(terms, change.currentTermId, helper.helperId, change.term.serviceKey);
+    const earlierEnd = change.term.effectiveTo;
+    if (earlierEnd === null) throw notAllowed("An earlier rate must say when it ended (effectiveTo): the current rate starts the day after.");
+    if (change.term.effectiveFrom > earlierEnd) throw notAllowed(`The earlier rate can't end (${earlierEnd}) before it starts (${change.term.effectiveFrom}).`);
+    const currentStartsOn = addDays(earlierEnd, 1);
+    if (currentStartsOn > current.effectiveFrom) {
+      throw notAllowed(`The earlier rate must end before the current one starts (${current.effectiveFrom}); it ends ${earlierEnd}.`);
+    }
+    summary = `${helper.name}: ${current.serviceLabel} was ${describeRules(change.term)} until ${earlierEnd}; ${describeRules(current)} from ${currentStartsOn}`;
   } else {
     const ended = assertOccupant(occupant, change.termId);
     if (change.effectiveTo < ended.effectiveFrom) throw notAllowed(`The term can't end before it starts (${ended.effectiveFrom}).`);
@@ -103,6 +114,14 @@ export async function proposeAgreementChange(
   // An END_TERM's source is whatever said so, not the document the term came from.
   const termDocId = change.change === AgreementChangeKind.END_TERM ? null : change.term.sourceDocId;
   return proposeAction(deps, draft, { ...source, docId: sourceDocId ?? termDocId });
+}
+
+function assertEarliest(terms: readonly AgreementTerm[], termId: string, helperId: string, serviceKey: string): AgreementTerm {
+  const earliest = earliestVersion(terms, helperId, serviceKey);
+  if (earliest === null || earliest.termId !== termId) {
+    throw notAllowed(`Term ${termId} isn't the earliest saved version of "${serviceKey}"${earliest ? ` (that's ${earliest.termId})` : ""}.`);
+  }
+  return earliest;
 }
 
 /** The helper and service an agreement change is about. */

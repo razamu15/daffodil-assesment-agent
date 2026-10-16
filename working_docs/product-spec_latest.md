@@ -202,14 +202,15 @@ You weren't sure. Here's the reasoning.
 | Screen | Purpose |
 |---|---|
 | **Login** | One password |
-| **Month** (home) | Status of every helper's bill for the period. The "have they come?" view |
+| **Month & bills** (home) | Status of every helper's bill for the period (the "have they come?" view), then every bill for the month, including approved, paid and replaced ones, with Mark as paid. Beside it: two small charts (billed per helper this month with the agreed amount, and billed per month for six months) and the assistant, so Jordan can drop things in without leaving the month |
 | **Bill detail** | Line-by-line check, verdict, source side-by-side, Approve / Ask helper |
 | **Agreements** | Per helper: current terms, history, source links. Helper details (key, how to pay), editable directly |
-| **Bills** | All bills by month, including approved and paid ones. Mark as paid from here |
-| **Assistant** (chat) | Paste, upload, ask. Pending cards appear inline. Chat list on the side |
+| **Assistant** (chat) | Paste text, attach files or a whole folder (images, text files, PDFs), or drop them in; ask. Pending cards appear inline. Decided cards fold into a read-only "Approved in this chat" panel on the side. Chat list on the other side. Unsent text and attachments are kept until sent |
 | **Decisions badge** | "3 things need you": pending confirmations |
 
-**Start state:** The app starts empty. The first screen says: *"Add what you have: paste notes, drop screenshots."*
+**Start state:** The app starts empty. The first screen says: *"Add what you have"* with the assistant right beside it, ready for the starter-pack folder.
+
+*Changed 2026-10-16:* Month and Bills were two screens; they're one now, because "has the bill come?" and "which bills are there?" are the same question.
 
 ---
 

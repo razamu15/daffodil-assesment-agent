@@ -34,7 +34,7 @@ import { checkBill, sameCheckContent } from "../checker/checkBill";
 import { checkStoredBill } from "../checker/checkStoredBill";
 import type { CoreDeps } from "../deps";
 import { billedCentsOf } from "../records/billAmounts";
-import { slotOccupant } from "./termSlot";
+import { earliestVersion, slotOccupant } from "../termVersions";
 
 export const ApplyOutcome = { APPLY: "APPLY", STALE: "STALE" } as const;
 export type ApplyPlan = { outcome: typeof ApplyOutcome.APPLY; ops: WriteOp[] } | { outcome: typeof ApplyOutcome.STALE; reason: string };
@@ -92,22 +92,31 @@ async function applyAgreementChange(deps: CoreDeps, action: PendingActionOf<"AGR
   });
   // The proposer guaranteed REPLACE/END target the occupant, and the basis check above that it hasn't moved.
   const created: AgreementTerm[] = [];
-  const closed: AgreementTerm[] = [];
+  /** Existing versions rewritten: closed (effectiveTo set) or re-dated (ADD_EARLIER_TERM). */
+  const revised: AgreementTerm[] = [];
   if (change.change === AgreementChangeKind.ADD_TERM) {
     created.push(newTerm(change.term, null));
   } else if (change.change === AgreementChangeKind.REPLACE_TERM) {
-    closed.push({ ...occupant!, effectiveTo: addDays(change.term.effectiveFrom, -1), version: occupant!.version + 1 });
+    revised.push({ ...occupant!, effectiveTo: addDays(change.term.effectiveFrom, -1), version: occupant!.version + 1 });
     created.push(newTerm(change.term, occupant!.termId));
+  } else if (change.change === AgreementChangeKind.ADD_EARLIER_TERM) {
+    // The basis pins the slot's latest version; the earliest one is checked here.
+    const current = earliestVersion(terms, basis.helperId, basis.serviceKey);
+    if (current === null || current.termId !== change.currentTermId) {
+      return stale(`The earliest "${basis.serviceKey}" rate changed after this was proposed. Review the current terms first.`);
+    }
+    revised.push({ ...current, effectiveFrom: addDays(change.term.effectiveTo!, 1), version: current.version + 1 });
+    created.push(newTerm(change.term, null));
   } else {
-    closed.push({ ...occupant!, effectiveTo: change.effectiveTo, version: occupant!.version + 1 });
+    revised.push({ ...occupant!, effectiveTo: change.effectiveTo, version: occupant!.version + 1 });
   }
   const termOps = [
-    ...closed.map((t) => update({ entity: StoredEntity.TERM, value: t })),
+    ...revised.map((t) => update({ entity: StoredEntity.TERM, value: t })),
     ...created.map((t) => create({ entity: StoredEntity.TERM, value: t })),
   ];
 
-  const closedIds = new Set(closed.map((t) => t.termId));
-  const termsAfter = [...terms.filter((t) => !closedIds.has(t.termId)), ...closed, ...created];
+  const revisedIds = new Set(revised.map((t) => t.termId));
+  const termsAfter = [...terms.filter((t) => !revisedIds.has(t.termId)), ...revised, ...created];
   const billOps = await recheckOpenBills(deps, basis.helperId, termsAfter, at);
   return { outcome: ApplyOutcome.APPLY, ops: [...termOps, ...billOps] };
 }

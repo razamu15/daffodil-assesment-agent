@@ -21,6 +21,7 @@ const shortDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numer
 const weekdayDate = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 const longDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const monthName = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+const shortMonthName = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
 const instantText = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 /** "Sep 4" */
@@ -31,6 +32,8 @@ export const formatWeekdayDate = (date: LocalDate): string => weekdayDate.format
 export const formatLongDate = (date: LocalDate): string => longDate.format(utcDate(date));
 /** "September 2026" */
 export const formatMonth = (month: MonthKey): string => monthName.format(utcDate(`${month}-01`));
+/** "Oct": chart axis labels. */
+export const formatShortMonth = (month: MonthKey): string => shortMonthName.format(utcDate(`${month}-01`));
 /** "Oct 14, 5:03 PM" */
 export const formatInstant = (instant: Instant): string => instantText.format(new Date(instant));
 

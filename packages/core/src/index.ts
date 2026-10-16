@@ -13,6 +13,7 @@ export { previousMonth } from "./calendar";
 export { checkBill, sameCheckContent } from "./checker/checkBill";
 export type { CheckBillInput } from "./checker/checkBill";
 export { checkBillById, checkStoredBill } from "./checker/checkStoredBill";
+export { isInEffectOn } from "./checker/terms";
 export { blockingItems, unacceptedBlockingItems, verdictOf } from "./checker/severity";
 export { PRICING_MODE_BY_RULE_KIND, PricingMode } from "./checker/lineChecks";
 
@@ -32,7 +33,7 @@ export { applyAction, ApplyOutcome } from "./actions/apply";
 export type { ApplyOptions, ApplyPlan } from "./actions/apply";
 export { confirmAction, rejectAction, withdrawAction } from "./actions/resolve";
 export type { ConfirmInput } from "./actions/resolve";
-export { slotOccupant } from "./actions/termSlot";
+export { earliestVersion, slotOccupant } from "./termVersions";
 export { describeRule, describeRules } from "./actions/describe";
 
 export { billedCentsOf, sumOfLinesCentsOf } from "./records/billAmounts";
@@ -42,3 +43,4 @@ export { createHelper, updateHelperProfile } from "./records/helpers";
 export { markMessageHandedOff } from "./records/messages";
 export { saveDocument } from "./records/documents";
 export { failTurnDispatch, startTurn } from "./records/sessions";
+

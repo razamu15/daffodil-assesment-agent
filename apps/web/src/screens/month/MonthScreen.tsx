@@ -1,11 +1,13 @@
 /**
- * Month (home): "have the bills come?" One row per helper for the period, with
- * its derived state, the first reason it was flagged, and the next step.
- * Starts empty with "Add what you have" guidance (Product §7).
+ * Month & bills (home): "have the bills come?" One row per helper for the
+ * period, with its derived state, the first reason it was flagged, and the next
+ * step; then every bill for the month (MonthBills). Beside it: small charts and
+ * the assistant, so Jordan can drop things in without leaving the month.
+ * Starts empty with "Add what you have" guidance and the assistant (Product §7).
  */
 import { useState } from "react";
 import { BillPeriodKind, BillStatus } from "@helper-assistant/domain";
-import type { Bill, Helper, MonthKey, MonthStatus, MonthStatusRow } from "@helper-assistant/domain";
+import type { Bill, Helper, Id, MonthKey, MonthStatus, MonthStatusRow, PaymentRecord } from "@helper-assistant/domain";
 import { asClientError, useApiQuery, useApp } from "../../app/AppContext";
 import { startChat } from "../../app/chatActions";
 import { hrefFor, navigate, routes } from "../../app/routes";
@@ -14,33 +16,88 @@ import { groupedReasons, itemsNeedingDecision } from "../../ui/checkItems";
 import { ErrorNote, Loaded, Pill } from "../../ui/common";
 import { formatCents, formatDate, formatInstant, formatLongDate, formatMonth, formatPeriod, plural } from "../../ui/format";
 import { ApproveDialog } from "../bill/ApproveDialog";
+import { CHAT_INTRO, Conversation } from "../chat/Conversation";
+import { MonthBills } from "./MonthBills";
+import { MonthCharts } from "./MonthCharts";
 import { MONTH_ROW_ACTION_LABEL, MonthRowAction, PERIOD_STATE_VIEW } from "./monthRowView";
 
-type MonthData = { status: MonthStatus; bills: Bill[]; helpers: Helper[] };
+/** Every bill (all months: the trend chart needs them) and payments. */
+type MonthData = { status: MonthStatus; allBills: Bill[]; payments: PaymentRecord[]; helpers: Helper[] };
+
+/**
+ * The chat in the side panel. Kept outside the component so it survives moving
+ * between months (each move remounts the screen). Starts as a new chat.
+ */
+let panelSessionId: Id | null = null;
 
 export function MonthScreen({ month }: { month: MonthKey | null }) {
   const query = useApiQuery(async (api): Promise<MonthData> => {
-    const status = await api.call("getMonthStatus", { query: month === null ? {} : { month } });
-    const [{ bills }, { helpers }] = await Promise.all([api.call("listBills", { query: { month: status.month } }), api.call("listHelpers")]);
-    return { status, bills, helpers };
+    const [status, { bills, payments }, { helpers }] = await Promise.all([
+      api.call("getMonthStatus", { query: month === null ? {} : { month } }),
+      api.call("listBills"),
+      api.call("listHelpers"),
+    ]);
+    return { status, allBills: bills, payments, helpers };
   }, [month]);
-  return <section className="screen">{<Loaded query={query}>{(data) => (data.helpers.length === 0 ? <FirstRun /> : <MonthView {...data} />)}</Loaded>}</section>;
+  return (
+    <section className="screen month-screen">
+      <Loaded query={query}>
+        {(data) => (
+          <div className="month-layout">
+            <div className="month-main">{data.helpers.length === 0 ? <FirstRun /> : <MonthView {...data} />}</div>
+            <aside className="month-side">
+              {data.helpers.length > 0 && <MonthCharts month={data.status.month} rows={data.status.rows} bills={data.allBills} helpers={data.helpers} />}
+              <AssistantPanel />
+            </aside>
+          </div>
+        )}
+      </Loaded>
+    </section>
+  );
 }
 
 function FirstRun() {
   return (
     <div className="first-run">
       <h1>Add what you have</h1>
-      <p>Paste notes, drop screenshots of texts with your helpers, or forward their bills. The assistant reads them, shows you what it understood, and saves nothing until you confirm.</p>
-      <a className="button primary" href={hrefFor(routes.chat())}>
-        Open the assistant
-      </a>
+      <p>
+        Paste notes, drop screenshots of texts with your helpers, their bills, or a whole folder into the assistant. It reads them, shows you what it understood,
+        and saves nothing until you confirm.
+      </p>
     </div>
   );
 }
 
-function MonthView({ status, bills, helpers }: MonthData) {
+function AssistantPanel() {
+  const [sessionId, setSessionId] = useState<Id | null>(panelSessionId);
+  const start = (id: Id | null) => {
+    panelSessionId = id;
+    setSessionId(id);
+  };
+  return (
+    <section className="assistant-panel">
+      <header className="assistant-panel-head">
+        <h2>Assistant</h2>
+        {sessionId !== null && (
+          <>
+            <a href={hrefFor(routes.chat(sessionId))} className="small">
+              Open full chat
+            </a>
+            <button type="button" className="link-button small" onClick={() => start(null)}>
+              New chat
+            </button>
+          </>
+        )}
+      </header>
+      <Conversation sessionId={sessionId} draft={null} intro={CHAT_INTRO} onSessionStarted={start} />
+    </section>
+  );
+}
+
+function MonthView({ status, allBills, payments, helpers }: MonthData) {
   const [approving, setApproving] = useState<{ bill: Bill; helper: Helper } | null>(null);
+  const [payingBillId, setPayingBillId] = useState<Id | null>(null);
+  const bills = allBills.filter((b) => monthOf(b.period.start) === status.month);
   const waiting = status.rows.filter((r) => PERIOD_STATE_VIEW[r.state].waitingOnYou).length;
   const thisMonth = monthOf(status.asOf);
   const billById = new Map(bills.map((b) => [b.billId, b]));
@@ -75,17 +132,24 @@ function MonthView({ status, bills, helpers }: MonthData) {
               asOf={status.asOf}
               bill={row.billId === null ? null : (billById.get(row.billId) ?? null)}
               onApprove={(bill) => setApproving({ bill, helper: helperById.get(row.helperId)! })}
+              onMarkPaid={(billId) => {
+                setPayingBillId(billId);
+                document.getElementById(`bill-${billId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
             />
           ))}
         </ul>
       )}
       <footer className="month-foot">{waiting === 0 ? "Nothing waiting on you this month." : `Waiting on you: ${plural(waiting, "bill")}`}</footer>
+      <MonthBills month={status.month} bills={bills} payments={payments} helpers={helpers} payingBillId={payingBillId} onPay={setPayingBillId} />
       {approving !== null && <ApproveDialog bill={approving.bill} helper={approving.helper} onClose={() => setApproving(null)} />}
     </>
   );
 }
 
-function MonthRow({ row, asOf, bill, onApprove }: { row: MonthStatusRow; asOf: string; bill: Bill | null; onApprove: (bill: Bill) => void }) {
+type MonthRowProps = { row: MonthStatusRow; asOf: string; bill: Bill | null; onApprove: (bill: Bill) => void; onMarkPaid: (billId: Id) => void };
+
+function MonthRow({ row, asOf, bill, onApprove, onMarkPaid }: MonthRowProps) {
   const { api } = useApp();
   const [error, setError] = useState<string | null>(null);
   const view = PERIOD_STATE_VIEW[row.state];
@@ -103,7 +167,7 @@ function MonthRow({ row, asOf, bill, onApprove }: { row: MonthStatusRow; asOf: s
     },
     [MonthRowAction.APPROVE]: () => bill !== null && onApprove(bill),
     [MonthRowAction.REVIEW]: openBill,
-    [MonthRowAction.MARK_PAID]: () => navigate(routes.bills()),
+    [MonthRowAction.MARK_PAID]: () => row.billId !== null && onMarkPaid(row.billId),
     [MonthRowAction.VIEW]: openBill,
   };
 

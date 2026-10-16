@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { AgreementChangeKind, ExceptionTarget, PendingActionType } from "@helper-assistant/domain";
 import type { AgreementTerm, Helper, PendingAction, PendingActionOf, PendingActionType as PendingActionTypeT, TermContent } from "@helper-assistant/domain";
 import { hrefFor, routes } from "../../app/routes";
+import { addDays } from "../../lib/dates";
 import { formatCents, formatLongDate, formatPeriod } from "../../ui/format";
 import { CONTACT_CHANNEL_LABEL, FINDING_TITLE, KEY_REMINDER, MESSAGE_REASON_LABEL } from "../../ui/labels";
 import { describeRule, describeSchedule } from "../../ui/rules";
@@ -46,6 +47,20 @@ const DETAILS: { [T in PendingActionTypeT]: Renderer<T> } = {
         <p>
           Ends {ended?.serviceLabel ?? "this agreement"} after {formatLongDate(change.effectiveTo)}.
         </p>
+      );
+    }
+    if (change.change === AgreementChangeKind.ADD_EARLIER_TERM) {
+      const current = terms.find((t) => t.termId === change.currentTermId);
+      return (
+        <>
+          <span className="why-label">Earlier rate</span>
+          <TermProposal term={change.term} />
+          {current !== undefined && change.term.effectiveTo !== null && (
+            <p className="muted small">
+              The current {current.serviceLabel} rate ({rulesText(current)}) will start {formatLongDate(addDays(change.term.effectiveTo, 1))} instead of {formatLongDate(current.effectiveFrom)}.
+            </p>
+          )}
+        </>
       );
     }
     const replaced = change.change === AgreementChangeKind.REPLACE_TERM ? terms.find((t) => t.termId === change.supersedesTermId) : undefined;
