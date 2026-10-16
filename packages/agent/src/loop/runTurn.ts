@@ -14,15 +14,16 @@
  * Call sites: LocalTurnRunner, the CLI and scenario runner, agent tests; later
  * the Agent Lambda handler (I3).
  */
-import { ChatRole, StoredEntity, TurnStatus, WriteConditionKind } from "@helper-assistant/domain";
-import type { AttachmentRef, ChatMessage, Id, Turn, WriteOp } from "@helper-assistant/domain";
+import { turnAttachments } from "@helper-assistant/core";
+import { ChatRole, StoredEntity, TurnStatus, userMessageText, WriteConditionKind } from "@helper-assistant/domain";
+import type { ChatMessage, Id, Turn, WriteOp } from "@helper-assistant/domain";
 import type { AgentDeps } from "../deps";
 import { systemPrompt } from "../prompt/systemPrompt";
 import { HINTS_TOP_K, HISTORY_MAX_MESSAGES } from "../settings";
 import { emptyTrace } from "../tools/context";
 import type { ToolContext, TurnTrace } from "../tools/context";
 import { runConverseLoop } from "./converseLoop";
-import { toModelMessages, userMessageText } from "./history";
+import { toModelMessages } from "./history";
 
 export async function runTurn({ turnId, sessionId }: { turnId: Id; sessionId: Id }, deps: AgentDeps): Promise<Turn> {
   const { store, clock } = deps;
@@ -38,7 +39,7 @@ export async function runTurn({ turnId, sessionId }: { turnId: Id; sessionId: Id
   let error: string | null = null;
   let userText: string | null = null;
   try {
-    const attachments = await attachmentsOf(deps, running);
+    const attachments = await turnAttachments(deps, running);
     userText = userMessageText(running.input.text, attachments);
     const statement = running.input.text.trim() === "" ? null : { docId: deps.newId(), text: running.input.text };
     const [history, hints] = await Promise.all([
@@ -56,17 +57,6 @@ export async function runTurn({ turnId, sessionId }: { turnId: Id; sessionId: Id
     if (replyText === null && userText !== null) error = await keepUserMessage(deps, sessionId, { role: ChatRole.USER, text: userText, at: running.createdAt }, error);
   }
   return finish(deps, running, { replyText, error, trace });
-}
-
-/** Attachments by id, kind and file name. A missing document is a broken turn input, so it fails the turn. */
-async function attachmentsOf({ store }: AgentDeps, turn: Turn): Promise<AttachmentRef[]> {
-  return Promise.all(
-    turn.input.attachmentDocIds.map(async (docId) => {
-      const document = await store.getDocument(docId);
-      if (document === null) throw new Error(`Attached document ${docId} not found`);
-      return { docId, kind: document.kind, fileName: document.fileName };
-    }),
-  );
 }
 
 /** A failed turn still leaves Jordan's message in the chat. If even that fails, both errors are reported. */

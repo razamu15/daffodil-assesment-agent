@@ -129,6 +129,13 @@ export const DAY_OF_WEEK_BY_JS_INDEX: readonly DayOfWeek[] = [
 
 export const AUTH_TOKEN_TTL_HOURS = 12;
 export const TURN_POLL_INTERVAL_MS = 1000;
+/**
+ * How long a session's lock (Session.activeTurnId) holds before the next message
+ * may take it over, marking the stuck turn FAILED. Longer than the Agent Lambda's
+ * 15-minute timeout (infra constructs/agent.ts; an infra test checks), so it only
+ * fires for a turn that can no longer be running: the Lambda timed out or crashed.
+ */
+export const TURN_LOCK_EXPIRY_MS = 16 * 60 * 1000;
 /** DynamoDB TransactWriteItems limit; InMemoryStore enforces it too so fakes don't hide it. */
 export const STORE_MAX_OPS_PER_COMMIT = 100;
 /** The UI resizes images to this longest edge before upload (Doc 2 §3). */

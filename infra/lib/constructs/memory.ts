@@ -26,10 +26,10 @@ export class Memory extends Construct {
   }
 
   /**
-   * Env vars the agent's AgentCoreMemory wiring reads. The hint namespaces use the
-   * `STRATEGY=namespace,...` format that packages/agent/scripts/live/env.ts parses.
+   * Env vars both Lambdas' AgentCoreMemory wiring reads (packages/agent/src/memory/
+   * agentCoreConfig.ts). The hint namespaces use its `STRATEGY=namespace,...` format.
    */
-  agentEnvironment(): Record<string, string> {
+  memoryEnvironment(): Record<string, string> {
     const hintNamespaces = Object.entries(MEMORY_STRATEGY_NAMESPACES)
       .map(([strategy, template]) => `${strategy}=${template.replace("{actorId}", AGENTCORE_ACTOR_ID)}`)
       .join(",");

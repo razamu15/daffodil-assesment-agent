@@ -4,7 +4,8 @@
  * document's id, kind and file name; the UI reads the same line back to show
  * the attachments as chips instead of raw ids. One format, written and read here.
  *
- * Call sites: agent loop/history.ts (writes it), web chat Conversation (reads it).
+ * Call sites: agent loop/runTurn.ts (writes it to chat history), api GET
+ * /api/turns/:id (shows it while the turn runs), web chat Conversation (reads it).
  */
 import { z } from "zod";
 import { DocumentKindSchema } from "./enums";
@@ -32,4 +33,16 @@ export function splitAttachmentMarker(message: string): { text: string; attachme
   } catch {
     return { text: message, attachments: [] };
   }
+}
+
+/**
+ * Jordan's message as stored and as the model sees it. Attachments are named by
+ * id and kind only, never inlined: their content reaches the model solely
+ * through the quarantined extraction call. The marker stays in history so a
+ * later turn can still refer to the document.
+ */
+export function userMessageText(text: string, attachments: readonly AttachmentRef[]): string {
+  if (attachments.length === 0) return text;
+  const marker = attachmentMarker(attachments);
+  return text.trim() === "" ? marker : `${text}\n\n${marker}`;
 }

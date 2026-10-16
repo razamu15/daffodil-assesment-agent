@@ -8,7 +8,7 @@
  *
  * Both prefixes start with the stack name, so nothing outside this app matches.
  *
- * Call site: scripts/destroy.ts, after `cdk destroy` succeeded.
+ * Call site: scripts/destroy.ts, after the stack is deleted.
  */
 import { CloudWatchLogsClient, DeleteLogGroupCommand, paginateDescribeLogGroups } from "@aws-sdk/client-cloudwatch-logs";
 import { DEPLOY_REGION, STACK_NAME } from "../lib/deployConfig";

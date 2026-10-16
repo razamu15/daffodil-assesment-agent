@@ -44,5 +44,5 @@ export type { ApproveBillInput, RecordBillResult } from "./records/bills";
 export { createHelper, updateHelperProfile } from "./records/helpers";
 export { markMessageHandedOff } from "./records/messages";
 export { saveDocument } from "./records/documents";
-export { failTurnDispatch, startTurn } from "./records/sessions";
+export { failTurnDispatch, startTurn, turnAttachments } from "./records/sessions";
 

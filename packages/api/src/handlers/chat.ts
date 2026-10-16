@@ -5,9 +5,9 @@
  *
  * Call site: createApp.
  */
-import { ApiErrorCode } from "@helper-assistant/domain";
+import { ApiErrorCode, ChatRole, userMessageText } from "@helper-assistant/domain";
 import type { PendingAction } from "@helper-assistant/domain";
-import { failTurnDispatch, startTurn } from "@helper-assistant/core";
+import { failTurnDispatch, startTurn, turnAttachments } from "@helper-assistant/core";
 import type { AppDeps } from "../deps";
 import { ApiFailure } from "../errors";
 import type { RouteHandlers } from "../routing";
@@ -39,7 +39,8 @@ export function chatHandlers(deps: AppDeps) {
           return action;
         }),
       );
-      return { turnId: turn.turnId, sessionId: turn.sessionId, status: turn.status, replyText: turn.replyText, proposedActions, error: turn.error };
+      const userMessage = { role: ChatRole.USER, text: userMessageText(turn.input.text, await turnAttachments(deps, turn)), at: turn.createdAt };
+      return { turnId: turn.turnId, sessionId: turn.sessionId, status: turn.status, replyText: turn.replyText, proposedActions, error: turn.error, userMessage };
     },
 
     listSessions: async () => ({ sessions: await store.listSessions() }),

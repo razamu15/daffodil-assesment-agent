@@ -3,7 +3,6 @@
   "include": [
     "bin",
     "lib",
-    "lambda",
     "scripts",
     "test",
     "*.ts"

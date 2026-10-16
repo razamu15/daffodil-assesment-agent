@@ -89,11 +89,22 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-/** Polls a running turn; refreshes the app when it finishes so the reply and its cards appear. */
-function useTurnPolling(turnId: Id | null): { running: boolean; error: string | null } {
+type TurnPolling = {
+  running: boolean;
+  /** Jordan's message that started the running turn; chat history only gets it when the turn ends. */
+  sentMessage: ChatMessage | null;
+  error: string | null;
+};
+
+/**
+ * Polls a running turn, starting at once so Jordan's message shows right away;
+ * refreshes the app when it finishes so the reply and its cards appear.
+ */
+function useTurnPolling(turnId: Id | null): TurnPolling {
   const { api, refresh } = useApp();
   const [error, setError] = useState<string | null>(null);
   const [finishedTurnId, setFinishedTurnId] = useState<Id | null>(null);
+  const [sent, setSent] = useState<{ turnId: Id; message: ChatMessage } | null>(null);
   useEffect(() => {
     if (turnId === null) return;
     let live = true;
@@ -101,6 +112,7 @@ function useTurnPolling(turnId: Id | null): { running: boolean; error: string | 
       try {
         const turn = await api.call("getTurn", { params: { id: turnId } });
         if (!live) return;
+        setSent({ turnId, message: turn.userMessage });
         if (FINISHED_TURN.includes(turn.status)) {
           if (turn.status === TurnStatus.FAILED) setError(turn.error ?? "The assistant couldn't finish that. Try again.");
           setFinishedTurnId(turnId);
@@ -110,26 +122,27 @@ function useTurnPolling(turnId: Id | null): { running: boolean; error: string | 
         if (live) setError(asClientError(e).message);
       }
     };
-    let timer = setTimeout(poll, TURN_POLL_INTERVAL_MS);
+    let timer = setTimeout(poll, 0);
     return () => {
       live = false;
       clearTimeout(timer);
     };
   }, [api, turnId]);
-  return { running: turnId !== null && turnId !== finishedTurnId && error === null, error };
+  const running = turnId !== null && turnId !== finishedTurnId && error === null;
+  return { running, sentMessage: running && sent?.turnId === turnId ? sent.message : null, error };
 }
 
 function ConversationView({ session, messages, pending, helpers, terms, outbound, sessionId, draft, onSessionStarted, intro }: ConversationData & Props) {
   const { refresh } = useApp();
   const [startedTurnId, setStartedTurnId] = useState<Id | null>(null);
-  const { running, error } = useTurnPolling(session?.activeTurnId ?? startedTurnId);
+  const { running, sentMessage, error } = useTurnPolling(session?.activeTurnId ?? startedTurnId);
 
   // Follow the conversation: show the newest message and cards as they arrive.
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const area = scrollRef.current;
     if (area) area.scrollTop = area.scrollHeight;
-  }, [messages.length, pending.length, running]);
+  }, [messages.length, pending.length, running, sentMessage]);
 
   return (
     <div className="conversation">
@@ -149,7 +162,9 @@ function ConversationView({ session, messages, pending, helpers, terms, outbound
               </li>
             ),
           )}
-          {running && <li className="bubble assistant thinking">Thinking…</li>}
+          {/* The first poll answers within one request; until then neither shows, so "Thinking…" never precedes the message. */}
+          {sentMessage !== null && <UserBubble text={sentMessage.text} />}
+          {sentMessage !== null && <li className="bubble assistant thinking">Thinking…</li>}
         </ol>
         {error !== null && <ErrorNote error={error} />}
         {pending.length > 0 && (

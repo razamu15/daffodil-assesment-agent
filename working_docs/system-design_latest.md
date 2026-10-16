@@ -204,7 +204,7 @@ infra/
   lib/deployConfig.ts         the pinned region, model ID, stack name and memory settings (one place)
   lib/helper-assistant-stack.ts
   lib/constructs/             small pieces: web hosting, api, agent, data, memory
-  scripts/cleanupLogGroups.ts runs after `cdk destroy` (see Teardown in §7)
+  scripts/cleanupLogGroups.ts runs after the stack is deleted (see Teardown in §7)
   cdk.json                    app command only
 ```
 
@@ -227,7 +227,8 @@ The region and model are fixed constants in `infra/lib/deployConfig.ts`, and the
 |---|---|---|
 | Account | the deployer's | `CDK_DEFAULT_ACCOUNT` (from their credentials) |
 | Region | `us-east-1` | `deployConfig.ts`. Ignores the deployer's default region, so a profile with no region or a different region still deploys to the right place |
-| Model ID | `us.anthropic.claude-sonnet-4-6` (US cross-region inference profile) | `deployConfig.ts`. Passed to the Agent Lambda as an env var |
+| Model API | `bedrock` or `anthropic` | `MODEL_PROVIDER` at deploy time (shell or repo `.env`). No default. `anthropic` exists because Bedrock model access is blocked on the dev account; it needs `ANTHROPIC_API_KEY`, which the stack keeps in a KMS-encrypted Secrets Manager secret only the Agent Lambda can read (infra README) |
+| Model ID | `us.anthropic.claude-sonnet-4-6` (Bedrock profile) or `claude-sonnet-4-6` (Claude API) | `deployConfig.ts`. Passed to the Agent Lambda as `BEDROCK_MODEL_ID` or `ANTHROPIC_MODEL_ID` |
 | Stack name | `HelperAssistant` | `deployConfig.ts`. The log group cleanup uses it as a prefix |
 | App password | the deployer's choice | `APP_PASSWORD` env var at deploy time. **Deploy fails with a clear message if unset.** `scripts/deploy.ts` passes it as the NoEcho stack parameter `AppPassword`, so it never lands in the template or `cdk.out`, and `cdk destroy` doesn't need it |
 
@@ -318,7 +319,7 @@ The one case it doesn't cover is an account bootstrapped with a custom qualifier
 ### Teardown
 
 ```
-npm run destroy        # cdk destroy --force, then scripts/cleanupLogGroups.ts
+npm run destroy        # CloudFormation DeleteStack (no synth), then scripts/cleanupLogGroups.ts
 ```
 
 **Removes everything this app created:** tables, both buckets (emptied first), Lambdas, HTTP API, CloudFront, the memory resource and its stored events, our log groups, and the CDK helper log groups (the cleanup script deletes every `/aws/lambda/HelperAssistant-*` and `HelperAssistant-*` group, so only ours).

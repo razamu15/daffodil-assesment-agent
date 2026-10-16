@@ -9,8 +9,8 @@
  *
  * Call site: runTurn.
  */
-import { attachmentMarker, ChatRole, ModelRole } from "@helper-assistant/domain";
-import type { AttachmentRef, ChatMessage, ChatRole as ChatRoleT, ModelMessage, ModelRole as ModelRoleT } from "@helper-assistant/domain";
+import { ChatRole, ModelRole } from "@helper-assistant/domain";
+import type { ChatMessage, ChatRole as ChatRoleT, ModelMessage, ModelRole as ModelRoleT } from "@helper-assistant/domain";
 
 const MODEL_ROLE_BY_CHAT_ROLE: Record<ChatRoleT, ModelRoleT> = {
   [ChatRole.USER]: ModelRole.USER,
@@ -27,16 +27,4 @@ export function toModelMessages(chat: readonly ChatMessage[]): ModelMessage[] {
     else messages.push({ role, content: [{ type: "text", text: message.text }] });
   }
   return messages;
-}
-
-/**
- * Jordan's message as stored and as the model sees it. Attachments are named by
- * id and kind only, never inlined: their content reaches the model solely
- * through the quarantined extraction call. The marker stays in history so a
- * later turn can still refer to the document.
- */
-export function userMessageText(text: string, attachments: AttachmentRef[]): string {
-  if (attachments.length === 0) return text;
-  const marker = attachmentMarker(attachments);
-  return text.trim() === "" ? marker : `${text}\n\n${marker}`;
 }

@@ -13,6 +13,7 @@
     "packages/api",
     "apps/web",
     "apps/local-server",
+    "apps/lambdas",
     "fixtures",
     "infra"
   ],

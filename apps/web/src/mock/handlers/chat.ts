@@ -38,10 +38,11 @@ export const chatHandlers: Pick<Handlers, ChatRoutes> = {
     if (session.activeTurnId !== null) throw new MockApiError(ApiErrorCode.SESSION_BUSY, "The assistant is still answering in this chat.");
     const turnId = world.newId("turn");
     const at = world.now();
-    world.chat.get(session.sessionId)!.push({ role: ChatRole.USER, text: body.text, at });
+    // Like the real server: history gets Jordan's message when the turn finishes; the turn view shows it meanwhile.
+    const userMessage = { role: ChatRole.USER, text: body.text, at };
     world.replace(world.sessions, (s) => s.sessionId === session.sessionId, { ...session, activeTurnId: turnId, lastActiveAt: at, version: session.version + 1 });
     world.turns.set(turnId, {
-      view: { turnId, sessionId: session.sessionId, status: TurnStatus.QUEUED, replyText: null, proposedActions: [], error: null },
+      view: { turnId, sessionId: session.sessionId, status: TurnStatus.QUEUED, replyText: null, proposedActions: [], error: null, userMessage },
       readyAtMs: Date.now() + TURN_DURATION_MS,
       input: { text: body.text, attachmentDocIds: body.attachmentDocIds },
     });
@@ -59,7 +60,7 @@ export const chatHandlers: Pick<Handlers, ChatRoutes> = {
     const { sessionId, turnId } = turn.view;
     const reply = scriptedReply(world, turn.input, { sessionId, turnId, docId: turn.input.attachmentDocIds[0] ?? null });
     const at = world.now();
-    world.chat.get(sessionId)!.push({ role: ChatRole.ASSISTANT, text: reply.replyText, at });
+    world.chat.get(sessionId)!.push(turn.view.userMessage, { role: ChatRole.ASSISTANT, text: reply.replyText, at });
     const session = world.session(sessionId);
     world.replace(world.sessions, (s) => s.sessionId === sessionId, { ...session, activeTurnId: null, lastActiveAt: at, version: session.version + 1 });
     turn.view = { ...turn.view, status: TurnStatus.COMPLETED, replyText: reply.replyText, proposedActions: reply.proposed };

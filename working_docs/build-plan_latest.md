@@ -312,7 +312,15 @@ npm run dev -w @helper-assistant/local-server    # API on :8787, restarts on cod
 npm run dev:local -w @helper-assistant/web       # UI on :5173, /api proxied to :8787
 ```
 
-**Why the Claude API exists here:** Bedrock model access is blocked on the dev account (support case open). `AnthropicModel` is a local stand-in behind the same `ModelClient` seam. The deployed Lambdas only use Bedrock, which the brief requires.
+**I3 result (2026-10-16):** handlers in `apps/lambdas` (`apiHandler.ts`: `createApp` through Hono's Lambda adapter; `agentHandler.ts`: one `runTurn` per async invoke from `LambdaTurnRunner`). Fresh deploy with `MODEL_PROVIDER=anthropic` (API key in a KMS-encrypted Secrets Manager secret). Through CloudFront, health, login and auth work, and a request without a token gets 401. The whole starter pack, uploaded in one message, ran as one turn in **310 s**: 3 helpers, 6 agreement proposals, all 3 bills recorded, with the expected findings previewed. That is longer than the skeleton's 5-minute Agent timeout, so:
+- **The Agent Lambda timeout is 15 minutes**, the async-invoke maximum.
+- **A session lock expires after `TURN_LOCK_EXPIRY_MS` (16 minutes)**: the next message fails the stuck turn and takes over. An infra test keeps the expiry longer than the timeout.
+
+Named future fixes from the run:
+- (a) A rate change can't be proposed on top of a still-pending term (the agent asks Jordan to confirm Lupe's current rate first, then proposes the $150 change). Same for Theo's earlier $25 rate.
+- (b) The UI keeps polling a turn the Lambda killed until the next message expires its lock.
+
+ Bedrock model access is blocked on the dev account (support case open). `AnthropicModel` stands in behind the same `ModelClient` seam, locally and (from I3) deployed: `MODEL_PROVIDER` picks the provider at deploy time, and `bedrock` remains the brief's target.
 
 ## 6. Testing
 

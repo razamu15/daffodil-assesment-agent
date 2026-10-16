@@ -16,6 +16,10 @@ describe("Markdown", () => {
     expect(out).toContain("<li><em>two</em></li>");
   });
 
+  it("leaves underscores inside words alone, but still reads _emphasis_", () => {
+    expect(html("The ADD_EARLIER_TERM card and a _note_")).toContain("The ADD_EARLIER_TERM card and a <em>note</em>");
+  });
+
   it("never passes markup through", () => {
     expect(html("<img src=x onerror=alert(1)>")).toContain("&lt;img");
   });

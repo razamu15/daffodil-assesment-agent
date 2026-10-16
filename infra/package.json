@@ -16,6 +16,7 @@
     "constructs": "^10.4.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-cloudformation": "^3.1152.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.1152.0",
     "aws-cdk": "^2.1145.0",
     "esbuild": "^0.28.2"

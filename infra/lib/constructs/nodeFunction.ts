@@ -1,6 +1,6 @@
 /**
- * One way to build our Lambdas: esbuild bundling on the host (no Docker), Node 22
- * on arm64, and a log group the stack owns so `cdk destroy` removes it.
+ * One way to build our Lambdas: esbuild bundling on the host (no Docker) with every
+ * dependency inlined, Node 22 on arm64, and a log group the stack owns so `cdk destroy` removes it.
  *
  * Call sites: constructs/agent.ts and constructs/api.ts.
  */
@@ -36,6 +36,7 @@ export function nodeFunction(scope: Construct, id: string, props: NodeFunctionPr
     logGroup,
     projectRoot: REPO_ROOT,
     depsLockFilePath: `${REPO_ROOT}/package-lock.json`,
-    bundling: { target: "node22", sourceMap: true },
+    // Bundle every AWS SDK client too: the runtime's built-in SDK may lag (e.g. AgentCore).
+    bundling: { target: "node22", sourceMap: true, externalModules: [] },
   });
 }

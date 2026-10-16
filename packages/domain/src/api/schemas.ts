@@ -83,6 +83,12 @@ export const TurnViewSchema = z.object({
   replyText: z.string().nullable(),
   /** Actions this turn proposed, so the UI can render cards inline. */
   proposedActions: z.array(PendingActionSchema),
+  /**
+   * Jordan's message that started the turn, exactly as chat history will store it
+   * (userMessageText). History is written when the turn ends, so the UI shows
+   * this meanwhile.
+   */
+  userMessage: ChatMessageSchema,
   error: z.string().nullable(),
 });
 export type TurnView = z.infer<typeof TurnViewSchema>;

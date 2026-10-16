@@ -9,9 +9,9 @@ import { fileURLToPath } from "node:url";
 export const INFRA_ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 export const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url)).replace(/\/$/, "");
 
-/** Track D stubs. I3 points these at thin wrappers around createApp and runTurn. */
-export const API_HANDLER_ENTRY = `${INFRA_ROOT}/lambda/apiStub.ts`;
-export const AGENT_HANDLER_ENTRY = `${INFRA_ROOT}/lambda/agentStub.ts`;
+/** The Lambda handlers (gate I3): thin wrappers around createApp and runTurn. */
+export const API_HANDLER_ENTRY = `${REPO_ROOT}/apps/lambdas/src/apiHandler.ts`;
+export const AGENT_HANDLER_ENTRY = `${REPO_ROOT}/apps/lambdas/src/agentHandler.ts`;
 
 /** `npm run build -w @helper-assistant/web` output. The deploy script builds it first. */
 export const WEB_DIST = `${REPO_ROOT}/apps/web/dist`;

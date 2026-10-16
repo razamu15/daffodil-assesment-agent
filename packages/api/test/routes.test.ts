@@ -120,7 +120,16 @@ describe("chat", () => {
     const { call, request, login, deps, errorCode } = await testApp();
     const { sessionId, turnId } = await call("chat", "/api/chat", { sessionId: null, text: "Check Priya's September bill", attachmentDocIds: [] });
     expect(deps.turnRunner.started).toEqual([{ turnId, sessionId }]);
-    expect(await call("getTurn", `/api/turns/${turnId}`)).toEqual({ turnId, sessionId, status: TurnStatus.QUEUED, replyText: null, proposedActions: [], error: null });
+    expect(await call("getTurn", `/api/turns/${turnId}`)).toEqual({
+      turnId,
+      sessionId,
+      status: TurnStatus.QUEUED,
+      replyText: null,
+      proposedActions: [],
+      error: null,
+      // Shown while the turn runs; history gets it when the turn ends.
+      userMessage: { role: ChatRole.USER, text: "Check Priya's September bill", at: expect.any(String) },
+    });
     expect((await call("listSessions", "/api/sessions")).sessions[0]).toMatchObject({ sessionId, title: "Check Priya's September bill", activeTurnId: turnId });
 
     const busy = await request("POST", "/api/chat", { body: { sessionId, text: "and Lupe's?", attachmentDocIds: [] }, token: await login() });
