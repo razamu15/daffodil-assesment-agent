@@ -9,12 +9,15 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
   },
   "dependencies": {
-    "@helper-assistant/domain": "*",
-    "@helper-assistant/api": "*",
     "@helper-assistant/agent": "*",
+    "@helper-assistant/api": "*",
+    "@helper-assistant/core": "*",
+    "@helper-assistant/domain": "*",
+    "@helper-assistant/fixtures": "*",
     "@helper-assistant/store": "*",
     "@hono/node-server": "^2.1.5"
   }

@@ -13,10 +13,10 @@ export const DEPLOY_REGION = "us-east-1";
 export const STACK_NAME = "HelperAssistant";
 
 /** US cross-region inference profile: Converse calls may be served from any region listed below. */
-export const MODEL_INFERENCE_PROFILE_ID = "us.anthropic.claude-sonnet-5-5";
+export const MODEL_INFERENCE_PROFILE_ID = "us.anthropic.claude-sonnet-4-6";
 
 /** The foundation model behind the profile. IAM must allow it in every region the profile routes to. */
-export const MODEL_FOUNDATION_ID = "anthropic.claude-sonnet-5-5";
+export const MODEL_FOUNDATION_ID = "anthropic.claude-sonnet-4-6";
 
 /** One household, so one AgentCore actor. */
 export const AGENTCORE_ACTOR_ID = "household";

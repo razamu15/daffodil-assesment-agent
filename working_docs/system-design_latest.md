@@ -220,11 +220,13 @@ The region and model are fixed constants in `infra/lib/deployConfig.ts`, and the
 |---|---|---|
 | Account | the deployer's | `CDK_DEFAULT_ACCOUNT` (from their credentials) |
 | Region | `us-east-1` | `deployConfig.ts`. Ignores the deployer's default region, so a profile with no region or a different region still deploys to the right place |
-| Model ID | `us.anthropic.claude-sonnet-5-5` (US cross-region inference profile) | `deployConfig.ts`. Passed to the Agent Lambda as an env var |
+| Model ID | `us.anthropic.claude-sonnet-4-6` (US cross-region inference profile) | `deployConfig.ts`. Passed to the Agent Lambda as an env var |
 | Stack name | `HelperAssistant` | `deployConfig.ts`. The log group cleanup uses it as a prefix |
 | App password | the deployer's choice | `APP_PASSWORD` env var at deploy time. **Deploy fails with a clear message if unset.** `scripts/deploy.ts` passes it as the NoEcho stack parameter `AppPassword`, so it never lands in the template or `cdk.out`, and `cdk destroy` doesn't need it |
 
 **Why pinned:** AgentCore Memory and this Claude profile both have to exist in the region we deploy to. Pinning one region we've tested removes a whole class of first-deploy failures. It also means we don't need a region-to-prefix lookup.
+
+**Why Sonnet 4.6, not Sonnet 5.5:** Sonnet 5.5 (first pick) rejects three request shapes the agent relies on: forced `tool_choice` (extraction forces its schema tool), non-default `temperature` (we send 0.2 and 0), and thinking turned off (it always returns thinking blocks, which `ModelMessage` has no slot for, and which must be replayed unchanged). Sonnet 4.6 accepts all three. Moving to a 5.x model is a named future fix: drop forced tool choice and temperature, and carry thinking blocks through the loop.
 
 **Trade-off to state in DESIGN.md:** the brief says "nothing hardcoded to your account or region". We read that as "it must deploy into the reviewer's account without edits", and it does: any account, from any default region. If they want another region, it's a one-line change in `deployConfig.ts`, as long as the model profile prefix and AgentCore support match that region.
 
@@ -279,7 +281,7 @@ Extraction lag (about a minute) is a known failure mode. It goes in DESIGN.md.
 | # | Step | Command |
 |---|---|---|
 | 1 | Finish the CLI setup | See `saad_aws_cli_setup.md` |
-| 2 | Enable the model | Bedrock console in `us-east-1`. Claude Sonnet 5.5 (and the Anthropic use-case form, if the account has never used Claude) |
+| 2 | Enable the model | Bedrock console in `us-east-1`. Claude Sonnet 4.6 (and the Anthropic use-case form, if the account has never used Claude) |
 | 3 | Install dependencies | `npm ci` |
 
 ### Every deploy
@@ -390,7 +392,7 @@ Log one structured line per tool call with `turnId` and `sessionId` so logs and 
 | Store | DynamoDB, one table per entity, GSIs for lists |
 | Hosting | CloudFront + S3, `/api/*` proxied |
 | Auth | Deploy-time password, API-checked token (Doc 3 §9) |
-| Region and model | Pinned: `us-east-1`, `us.anthropic.claude-sonnet-5-5`, in `deployConfig.ts` and the README |
+| Region and model | Pinned: `us-east-1`, `us.anthropic.claude-sonnet-4-6`, in `deployConfig.ts` and the README |
 | Bootstrap | Run by `npm run deploy` every time (no-op when already done) |
 | Teardown | Everything the app created, including CDK helper log groups. `CDKToolkit` is kept (shared) |
 | "Today" | Runtime clock's time zone. UTC on Lambda. No household time zone setting |

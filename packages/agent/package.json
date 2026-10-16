@@ -13,13 +13,14 @@
     "scenarios": "tsx scripts/scenarios.ts"
   },
   "dependencies": {
-    "@helper-assistant/domain": "*",
-    "@helper-assistant/core": "*",
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1151.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1151.0",
-    "@aws-sdk/client-bedrock-agentcore": "^3.1151.0"
+    "@helper-assistant/core": "*",
+    "@helper-assistant/domain": "*"
   },
   "devDependencies": {
-    "@helper-assistant/store": "*",
-    "@helper-assistant/fixtures": "*"
+    "@helper-assistant/fixtures": "*",
+    "@helper-assistant/store": "*"
   }
 }

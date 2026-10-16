@@ -10,7 +10,7 @@ npm test -w infra                                   # template assertions, no AW
 
 ## Pinned settings
 
-All in `lib/deployConfig.ts`: region `us-east-1`, model `us.anthropic.claude-sonnet-5-5`, stack name, AgentCore actor and memory namespaces. The account comes from the deployer's credentials.
+All in `lib/deployConfig.ts`: region `us-east-1`, model `us.anthropic.claude-sonnet-4-6`, stack name, AgentCore actor and memory namespaces. The account comes from the deployer's credentials.
 
 ## Verified at Track D
 
@@ -18,7 +18,7 @@ All in `lib/deployConfig.ts`: region `us-east-1`, model `us.anthropic.claude-son
 |---|---|---|
 | AgentCore Memory construct | `CfnMemory` in `aws-cdk-lib/aws-bedrockagentcore`. Built-in strategies: `semanticMemoryStrategy`, `userPreferenceMemoryStrategy`, each with `name` and `namespaces` | Installed `aws-cdk-lib` typings and the CloudFormation reference |
 | AgentCore IAM actions the agent needs | `bedrock-agentcore:CreateEvent`, `bedrock-agentcore:ListEvents`, `bedrock-agentcore:RetrieveMemoryRecords`, on the memory ARN | IAM Access Analyzer `validate-policy` (accepts these, rejects a made-up action) |
-| Model profile routing | `us.anthropic.claude-sonnet-5-5` routes to `us-east-1`, `us-east-2`, `us-west-2`. IAM allows the profile ARN plus `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-5-5` | `aws bedrock get-inference-profile` |
+| Model profile routing | `us.anthropic.claude-sonnet-4-6` routes to `us-east-1`, `us-east-2`, `us-west-2`. IAM allows the profile ARN plus `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6` | `aws bedrock get-inference-profile` |
 
 ## Choices worth knowing
 

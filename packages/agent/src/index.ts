@@ -26,6 +26,10 @@ export { EXTRACTION_OUTPUT_TOOL } from "./extraction/outputTools";
 
 export { BedrockModel, bedrockConverseApi, fromConverseOutput, toConverseInput } from "./model/bedrockModel";
 export type { BedrockConverseApi } from "./model/bedrockModel";
+export { AnthropicModel, anthropicMessagesApi, fromAnthropicMessage, toAnthropicParams } from "./model/anthropicModel";
+export type { AnthropicMessagesApi } from "./model/anthropicModel";
+export { ModelProvider, modelFromSettings } from "./model/modelProvider";
+export type { ModelSettings } from "./model/modelProvider";
 export { FakeModel, lastToolResults } from "./model/fakeModel";
 export type { FakeModelStep } from "./model/fakeModel";
 

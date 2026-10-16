@@ -16,7 +16,7 @@
 
 **OPEN DECISIONS. Resolve or ask; never invent:**
 **DECIDED (Doc 2 §6, "Settings" and "Cross-chat memory"):**
-- **#5 Region and model are pinned.** `infra/lib/deployConfig.ts` holds `us-east-1`, `us.anthropic.claude-sonnet-5-5`, the stack name `HelperAssistant`, the actor ID and both memory namespaces. `bin/app.ts` uses `CDK_DEFAULT_ACCOUNT` for the account and `deployConfig` for the region. Don't use `cdk.json` context. Grant `InvokeModel` on the profile **and** the foundation model in any region.
+- **#5 Region and model are pinned.** `infra/lib/deployConfig.ts` holds `us-east-1`, `us.anthropic.claude-sonnet-4-6`, the stack name `HelperAssistant`, the actor ID and both memory namespaces. `bin/app.ts` uses `CDK_DEFAULT_ACCOUNT` for the account and `deployConfig` for the region. Don't use `cdk.json` context. Grant `InvokeModel` on the profile **and** the foundation model in any region.
 - **#6 Memory construct is `CfnMemory`** (`aws-cdk-lib/aws-bedrockagentcore`), with semantic and user-preference strategies on the `deployConfig` namespaces. Pass `AGENTCORE_MEMORY_ID`, `AGENTCORE_ACTOR_ID` and `AGENTCORE_HINT_NAMESPACES` (`SEMANTIC=…,PREFERENCE=…`) to the Agent Lambda. **Still open:** the exact AgentCore IAM action names. Verify them and record them in `infra/README.md`.
 - **#7 No household time zone.** Don't add a setting. "Today" is the runtime's clock (UTC on Lambda).
 - **Bootstrap:** the `deploy` script runs `cdk bootstrap` before `cdk deploy`, every time.

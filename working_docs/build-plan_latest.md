@@ -57,7 +57,7 @@ Each interface has a **fake** (runs anywhere, for tests and local dev) and a **r
 | Seam | Fake | Real | Why a seam |
 |---|---|---|---|
 | `Store` | `InMemoryStore` | `DynamoStore` | Everything runs without AWS |
-| `ModelClient` | `FakeModel` (scripted replies) | `BedrockModel` | Loop tests are deterministic and free |
+| `ModelClient` | `FakeModel` (scripted replies) | `BedrockModel`. Local dev can use `AnthropicModel` (Claude API) instead, picked by `MODEL_PROVIDER` | Loop tests are deterministic and free |
 | `MemoryClient` | `InMemoryMemory` | `AgentCoreMemory` | Agent works before the memory resource exists |
 | `TurnRunner` | `LocalTurnRunner` (in-process) | `LambdaTurnRunner` (async invoke) | "Move to Lambdas" is a swap, not a rewrite |
 | `Clock` | `FixedClock.onDate("2026-10-14")` | `SystemClock()` (runtime zone) | Dates like "the 15th" become testable |
@@ -275,7 +275,7 @@ Don't merge everything at once. Each gate isolates one risk.
 
 | Gate | What changes | Risk it isolates | Done when |
 |---|---|---|---|
-| **I1. All local** | `local-server` wires `api` + `agent` + `InMemoryStore` + `InMemoryMemory` + real `BedrockModel`. UI points at `localhost` instead of the mock | **Do the pieces fit?** (contracts, UI ↔ API ↔ agent) | Starter pack goes end to end in the browser, locally |
+| **I1. All local** | `local-server` wires `api` + `agent` + `InMemoryStore` + `InMemoryMemory` + a real model (`MODEL_PROVIDER`: Claude API while Bedrock is blocked, or Bedrock). UI runs `dev:local` against `localhost` instead of the mock | **Do the pieces fit?** (contracts, UI ↔ API ↔ agent) | Starter pack goes end to end in the browser, locally |
 | **I2. Real AWS data** | `DynamoStore` and `AgentCoreMemory` replace the fakes. Still runs on your laptop against the deployed table and memory | **Do AWS services behave as assumed?** (conditional writes, memory events, retrieval lag) | `Store` conformance passes on `DynamoStore`. Chat history and long-term hints work |
 | **I3. Lambdas** | Wrap `createApp` and `runTurn` in thin handlers. Swap `LocalTurnRunner` for `LambdaTurnRunner`. Build and deploy | **Does packaging, IAM, timeouts, async behave?** | Deployed app passes the I1 scenario |
 | **I4. Hardening** | Adversarial tests, fresh deploy, docs | **Does it work for strangers on the first try?** | Fresh-shell deploy and destroy. README steps followed literally |
@@ -289,6 +289,23 @@ Track 0 → (A, B, C, D in any order, directories are disjoint) → I1 → I2 �
 ```
 
 ---
+
+### Running I1 locally
+
+Settings live in the repo-root `.env` (copy `.env.example`). The local server reads it at startup and fails loudly on anything missing.
+
+| Setting | Values |
+|---|---|
+| `APP_PASSWORD` | local login password |
+| `MODEL_PROVIDER` | `anthropic` (needs `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL_ID`) or `bedrock` (needs `BEDROCK_MODEL_ID`, `AWS_REGION`, AWS credentials) |
+| `LOCAL_SEED` | `empty` (upload the starter pack yourself), `documents`, or `full` |
+
+```
+npm run dev -w @helper-assistant/local-server    # API on :8787, restarts on code changes, in-memory (resets)
+npm run dev:local -w @helper-assistant/web       # UI on :5173, /api proxied to :8787
+```
+
+**Why the Claude API exists here:** Bedrock model access is blocked on the dev account (support case open). `AnthropicModel` is a local stand-in behind the same `ModelClient` seam. The deployed Lambdas only use Bedrock, which the brief requires.
 
 ## 6. Testing
 
@@ -435,7 +452,7 @@ You're the review bottleneck. Stagger the gates.
 ### README.md
 
 1. What it is (2 lines)
-2. Prerequisites: AWS account, Node 22, credentials, **Claude Sonnet 5.5 (`us.anthropic.claude-sonnet-5-5`) enabled in `us-east-1`**. No manual bootstrap: `deploy` does it
+2. Prerequisites: AWS account, Node 22, credentials, **Claude Sonnet 4.6 (`us.anthropic.claude-sonnet-4-6`) enabled in `us-east-1`**. No manual bootstrap: `deploy` does it
 3. Deploy: `APP_PASSWORD='...' npm run deploy`
 4. Log in: open `AppUrl`, enter the password
 5. Teardown: `npm run destroy`. What it removes, and that `CDKToolkit` is kept (with the one command to delete it)
@@ -475,7 +492,7 @@ You're the review bottleneck. Stagger the gates.
 | 2 | Plausibility notes from schedules (P11 / A2) | **Decided: yes** | 1, 3 |
 | 3 | Supersede rule for corrected bills (P10 / A3) | **Decided: yes** | 1, 3 |
 | 4 | `record_bill` without confirmation (A4) | **Decided: yes.** It runs the checker on save | 3 |
-| 5 | Exact Bedrock model ID, inference profile, region | **Decided:** `us.anthropic.claude-sonnet-5-5` in `us-east-1`, pinned in `deployConfig.ts` and the README | 2 §6 |
+| 5 | Exact Bedrock model ID, inference profile, region | **Decided:** `us.anthropic.claude-sonnet-4-6` in `us-east-1`, pinned in `deployConfig.ts` and the README | 2 §6 |
 | 6 | AgentCore Memory CDK construct and IAM action names | **Confirmed** at Track D: `CfnMemory`; `CreateEvent`, `ListEvents`, `RetrieveMemoryRecords` (`infra/README.md`) | 2 |
 | 7 | Household time zone for `SystemClock` (what "today" is) | **Decided: dropped.** `SystemClock` uses the runtime's zone (UTC on Lambda). Known failure mode near month boundaries | 2 §6 |
 
