@@ -6,12 +6,18 @@
  * needs only the stack name, so teardown doesn't synthesize the app (no
  * settings, no Lambda bundling). The KMS key of a MODEL_PROVIDER=anthropic
  * deploy is scheduled for deletion (KMS's 7-day minimum wait), not deleted at once.
+ *
+ * Loads the repo-root .env like deploy does, so the same AWS_PROFILE reaches
+ * the SDK clients here.
  */
 import { CloudFormationClient, DeleteStackCommand, DescribeStacksCommand, waitUntilStackDeleteComplete } from "@aws-sdk/client-cloudformation";
 import { DEPLOY_REGION, STACK_NAME } from "../lib/deployConfig";
+import { loadRepoEnv } from "../lib/repoEnv";
 import { deleteLeftoverLogGroups } from "./cleanupLogGroups";
 
 const STACK_DELETE_TIMEOUT_SECONDS = 30 * 60;
+
+loadRepoEnv();
 
 const cloudFormation = new CloudFormationClient({ region: DEPLOY_REGION });
 const exists = await cloudFormation.send(new DescribeStacksCommand({ StackName: STACK_NAME })).then(

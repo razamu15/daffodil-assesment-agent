@@ -38,7 +38,7 @@ Copy [`.env.example`](.env.example) to `.env` at the repo root and fill in one o
 
 These names are exactly the ones in `.env.example` and `modelProvider.ts`.
 
-**Scope of this switch, at the time of writing.** `.env.example` says its settings are for local development (`apps/local-server` and the agent CLI) and are not used by the deployed stack. The deployed stack's region and Bedrock model come from `infra/lib/deployConfig.ts`. If the deploy path gains its own provider setting, it will be documented in [`infra/README.md`](infra/README.md); check there before deploying.
+**Scope of this switch.** The same `MODEL_PROVIDER` picks the model locally and when deployed. With `anthropic`, the deploy stores `ANTHROPIC_API_KEY` in AWS Secrets Manager; it never appears in the template or the Lambda environment. The deployed region and Bedrock model come from `infra/lib/deployConfig.ts`.
 
 ### Running it
 
@@ -56,15 +56,17 @@ On AWS: see [start up and tear down](#aws-start-up-and-tear-down) below.
 
 ### AWS: start up and tear down
 
-**Before you start:** Node 22+, `npm ci` run at the repo root, and AWS credentials for the account you want to deploy into (for example `export AWS_PROFILE=...`, or `aws login`). The region is pinned to `us-east-1` in [`infra/lib/deployConfig.ts`](infra/lib/deployConfig.ts). The account comes from your credentials.
+**Before you start:** Node 22+, `npm ci` run at the repo root, and AWS credentials for the account you want to deploy into. Put `AWS_PROFILE=...` in `.env` or export it in the shell, and make sure that profile is signed in (for example `aws login --profile ...`). The region is pinned to `us-east-1` in [`infra/lib/deployConfig.ts`](infra/lib/deployConfig.ts). The account comes from your credentials.
+
+Both scripts read the repo-root `.env` (variables set in the shell win). Deploy needs `APP_PASSWORD`, `MODEL_PROVIDER` and, with `anthropic`, `ANTHROPIC_API_KEY` (see [How to choose](#how-to-choose)).
 
 **Start up** (one command, from the repo root):
 
 ```bash
-APP_PASSWORD='choose-one' npm run deploy -w infra
+npm run deploy -w infra
 ```
 
-This builds the UI, runs `cdk bootstrap` (a no-op if your account is already bootstrapped), then deploys the `HelperAssistant` stack. It stops before touching AWS if `APP_PASSWORD` is missing. When it finishes, the stack outputs print `AppUrl` (open it in a browser and log in with the password you chose), plus `Region`, `ModelId` and `MemoryId`.
+This builds the UI, runs `cdk bootstrap` (a no-op if your account is already bootstrapped), then deploys the `HelperAssistant` stack. It stops before touching AWS if a required setting is missing, and names it. When it finishes, the stack outputs print `AppUrl` (open it in a browser and log in with the password you chose), plus `Region`, `ModelId` and `MemoryId`.
 
 **Tear down** (one command, from the repo root):
 
@@ -72,7 +74,7 @@ This builds the UI, runs `cdk bootstrap` (a no-op if your account is already boo
 npm run destroy -w infra
 ```
 
-This runs `cdk destroy` on the stack, then deletes the log groups CDK's helper Lambdas leave behind. Every table, bucket and log group is set to delete with the stack, and buckets are emptied first, so nothing billable is left. The `CDKToolkit` bootstrap stack is kept on purpose, since other CDK apps in the account may share it.
+This deletes the stack through CloudFormation (no synth, so it needs no deploy settings, only credentials), then deletes the log groups CDK's helper Lambdas leave behind. Every table, bucket and log group is set to delete with the stack, and buckets are emptied first. The one exception is the KMS key an `anthropic` deploy creates: KMS only allows scheduling it for deletion, with a 7-day minimum wait. The `CDKToolkit` bootstrap stack is kept on purpose, since other CDK apps in the account may share it.
 
 **Check without AWS:** `npm test -w infra` runs template assertions against the synthesized stack. More detail in [`infra/README.md`](infra/README.md).
 
