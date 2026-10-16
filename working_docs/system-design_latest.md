@@ -210,7 +210,7 @@ infra/
 | `Agent` | Agent Lambda (esbuild-bundled, 5 min timeout), Bedrock + AgentCore + table permissions, async retries = 0 |
 | `Api` | API Lambda, HTTP API route `ANY /api/{proxy+}` |
 | `Web` | S3 bucket (private, `DESTROY`, `autoDeleteObjects`), CloudFront distribution, `BucketDeployment` of the built React app |
-| `Outputs` | `AppUrl`, `Region`, `ModelId`, `MemoryId`, login hint |
+| Outputs (on the stack itself) | `AppUrl`, `Region`, `ModelId`, `MemoryId`, login hint |
 
 ### Settings: region and model are pinned
 
@@ -222,7 +222,7 @@ The region and model are fixed constants in `infra/lib/deployConfig.ts`, and the
 | Region | `us-east-1` | `deployConfig.ts`. Ignores the deployer's default region, so a profile with no region or a different region still deploys to the right place |
 | Model ID | `us.anthropic.claude-sonnet-5-5` (US cross-region inference profile) | `deployConfig.ts`. Passed to the Agent Lambda as an env var |
 | Stack name | `HelperAssistant` | `deployConfig.ts`. The log group cleanup uses it as a prefix |
-| App password | the deployer's choice | `APP_PASSWORD` env var at deploy time. **Deploy fails with a clear message if unset** |
+| App password | the deployer's choice | `APP_PASSWORD` env var at deploy time. **Deploy fails with a clear message if unset.** `scripts/deploy.ts` passes it as the NoEcho stack parameter `AppPassword`, so it never lands in the template or `cdk.out`, and `cdk destroy` doesn't need it |
 
 **Why pinned:** AgentCore Memory and this Claude profile both have to exist in the region we deploy to. Pinning one region we've tested removes a whole class of first-deploy failures. It also means we don't need a region-to-prefix lookup.
 
@@ -257,7 +257,7 @@ Extraction lag (about a minute) is a known failure mode. It goes in DESIGN.md.
 | CloudFront SPA fallback rewrites API 404s into `index.html` | Use **hash routing** in React (`#/month`) so no fallback is needed |
 | Async Lambda invokes retry by default, so a turn could run twice | `retryAttempts: 0` on the Agent Lambda, plus a turn-status guard |
 | Lambda log groups are created outside the stack, so teardown leaves them | Our own Lambdas: explicit `LogGroup` resources with `DESTROY`. `BucketDeployment`: pass its `logGroup` prop too |
-| CDK's internal helper Lambdas (e.g. the `autoDeleteObjects` provider) create log groups we can't declare | `scripts/cleanupLogGroups.ts` deletes every `/aws/lambda/HelperAssistant-*` log group after `cdk destroy` (§7) |
+| CDK's internal helper Lambdas (e.g. the `autoDeleteObjects` provider) create log groups we can't declare. And the UI `BucketDeployment` Lambda logs during teardown, after its stack-owned group is gone, so Lambda re-creates it | `scripts/cleanupLogGroups.ts` runs after `cdk destroy` and deletes every log group starting with `/aws/lambda/HelperAssistant-` or `HelperAssistant-` (§7). Seen on the first real teardown |
 | A US cross-region inference profile routes calls to several US regions | Grant `InvokeModel` on the profile ARN **and** the foundation model ARN in any region (`arn:aws:bedrock:*::foundation-model/...`) |
 | First failed deploy leaves the stack in `ROLLBACK_COMPLETE` | `npm run destroy` before retrying |
 | UI must be built before synth | Root `deploy` script builds the web app first |
@@ -267,8 +267,8 @@ Extraction lag (about a minute) is a known failure mode. It goes in DESIGN.md.
 
 | Role | Can |
 |---|---|
-| API Lambda | Read/write the table, put to the uploads bucket, invoke the Agent Lambda |
-| Agent Lambda | Read/write the table, read uploads, `bedrock:InvokeModel` (profile + models), AgentCore memory actions **[VERIFY exact action names]** |
+| API Lambda | Read/write the tables, read/write the uploads bucket, invoke the Agent Lambda |
+| Agent Lambda | Read/write the tables, read uploads, `bedrock:InvokeModel` (profile + models), `bedrock-agentcore:CreateEvent`, `ListEvents`, `RetrieveMemoryRecords` on the memory ARN (verified, see `infra/README.md`) |
 
 ---
 
@@ -312,7 +312,7 @@ The one case it doesn't cover is an account bootstrapped with a custom qualifier
 npm run destroy        # cdk destroy --force, then scripts/cleanupLogGroups.ts
 ```
 
-**Removes everything this app created:** tables, both buckets (emptied first), Lambdas, HTTP API, CloudFront, the memory resource and its stored events, our log groups, and the CDK helper log groups (the cleanup script deletes every `/aws/lambda/HelperAssistant-*` group, so only ours).
+**Removes everything this app created:** tables, both buckets (emptied first), Lambdas, HTTP API, CloudFront, the memory resource and its stored events, our log groups, and the CDK helper log groups (the cleanup script deletes every `/aws/lambda/HelperAssistant-*` and `HelperAssistant-*` group, so only ours).
 
 **Kept on purpose:** the `CDKToolkit` bootstrap stack and its staging bucket. They're shared by every CDK app in that account and region. If the reviewer already had them, deleting them would break their other CDK apps. If they want a fully clean account, the README gives the one manual command to delete `CDKToolkit`.
 

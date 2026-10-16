@@ -39,7 +39,7 @@ npm run deploy -w infra                              # again: bootstrap is a no-
 curl -s <AppUrl>/api/health                          # 200 {"ok":true}
 curl -s -X POST <AppUrl>/api/login -d '{"password":"test"}'   # 200 token; wrong password → 401
 npm run deploy -w infra   (without APP_PASSWORD)    # fails before touching AWS
-npm run destroy -w infra                             # only CDKToolkit left; no buckets, memory or /aws/lambda/HelperAssistant-* log groups
+npm run destroy -w infra                             # only CDKToolkit left; no buckets, memory or HelperAssistant log groups
 npm run check
 ```
 Also run `grep -r` for your account ID: no hits. The region and model appear only in `deployConfig.ts`. Saad's by-eye checks are in build-plan §4 Track D. **Deploy early and redeploy often.**

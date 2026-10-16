@@ -60,7 +60,7 @@ Each interface has a **fake** (runs anywhere, for tests and local dev) and a **r
 | `ModelClient` | `FakeModel` (scripted replies) | `BedrockModel` | Loop tests are deterministic and free |
 | `MemoryClient` | `InMemoryMemory` | `AgentCoreMemory` | Agent works before the memory resource exists |
 | `TurnRunner` | `LocalTurnRunner` (in-process) | `LambdaTurnRunner` (async invoke) | "Move to Lambdas" is a swap, not a rewrite |
-| `Clock` | `FixedClock.onDate("2026-10-14")` | `SystemClock(timeZone)` | Dates like "the 15th" become testable |
+| `Clock` | `FixedClock.onDate("2026-10-14")` | `SystemClock()` (runtime zone) | Dates like "the 15th" become testable |
 | `BlobStore` | `InMemoryBlobStore` | `S3BlobStore` | Screenshot bytes without S3 (added in Track 0) |
 
 **The rule that makes "move to Lambda" easy:**
@@ -263,7 +263,7 @@ npm run destroy                       # leaves only CDKToolkit
 - `grep -r` for your account ID in the repo: nothing. The region and model appear only in `infra/lib/deployConfig.ts` and the README (pinned on purpose, Doc 2 §6).
 - Deploy once from a profile whose default region is **not** `us-east-1`. It should still land in `us-east-1`.
 - Run `npm run deploy` twice in a row. The second bootstrap is a no-op.
-- Look in the console after destroy: no leftover buckets, no `/aws/lambda/HelperAssistant-*` log groups, no memory resource.
+- Look in the console after destroy: no leftover buckets, no log groups containing `HelperAssistant`, no memory resource.
 
 **Do this track first and redeploy often.** Infra surprises are the ones that cost hours.
 
@@ -476,7 +476,7 @@ You're the review bottleneck. Stagger the gates.
 | 3 | Supersede rule for corrected bills (P10 / A3) | **Decided: yes** | 1, 3 |
 | 4 | `record_bill` without confirmation (A4) | **Decided: yes.** It runs the checker on save | 3 |
 | 5 | Exact Bedrock model ID, inference profile, region | **Decided:** `us.anthropic.claude-sonnet-5-5` in `us-east-1`, pinned in `deployConfig.ts` and the README | 2 §6 |
-| 6 | AgentCore Memory CDK construct and IAM action names | Construct **confirmed**: `CfnMemory` in `aws-cdk-lib/aws-bedrockagentcore`. IAM action names still to verify at Track D | 2 |
+| 6 | AgentCore Memory CDK construct and IAM action names | **Confirmed** at Track D: `CfnMemory`; `CreateEvent`, `ListEvents`, `RetrieveMemoryRecords` (`infra/README.md`) | 2 |
 | 7 | Household time zone for `SystemClock` (what "today" is) | **Decided: dropped.** `SystemClock` uses the runtime's zone (UTC on Lambda). Known failure mode near month boundaries | 2 §6 |
 
 ---

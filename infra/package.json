@@ -6,13 +6,17 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "tsx scripts/deploy.ts",
+    "destroy": "tsx scripts/destroy.ts"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.273.0",
     "constructs": "^10.4.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.1152.0",
     "aws-cdk": "^2.1145.0",
     "esbuild": "^0.28.2"
   }
