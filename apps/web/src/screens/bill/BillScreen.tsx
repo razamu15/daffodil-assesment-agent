@@ -12,7 +12,7 @@ import { asClientError, useApiQuery, useApp } from "../../app/AppContext";
 import { resolveBillInChat, startChat } from "../../app/chatActions";
 import { hrefFor, routes } from "../../app/routes";
 import { monthOf } from "../../lib/months";
-import { Assumptions, ErrorNote, Loaded } from "../../ui/common";
+import { Assumptions, AssumptionsToggle, ErrorNote, Loaded } from "../../ui/common";
 import { formatCents, formatInstant, formatPeriod } from "../../ui/format";
 import { NOTE_KIND_LABEL } from "../../ui/labels";
 import { SourceDocumentView } from "../../ui/SourceDocumentView";
@@ -136,7 +136,7 @@ function BillView({ bill, terms, sourceDocument, payment, helper, helpers, messa
         <section className="pane">
           <h2>What was read, line by line</h2>
           {check !== null && <LineChecksTable lineItems={bill.lineItems} check={check} terms={terms} />}
-          <Assumptions title="How this bill was read" items={bill.extractionAssumptions} />
+          <AssumptionsToggle what="how this bill was read" items={bill.extractionAssumptions} />
         </section>
       </div>
 

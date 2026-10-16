@@ -158,7 +158,7 @@ export function Composer({ sessionId, initialText, disabled, onStarted }: Props)
               type="button"
               disabled={pasting.text.trim() === ""}
               onClick={() => {
-                add(`${DOCUMENT_KIND_LABEL[pasting.kind]} (pasted)`, { storage: DocumentStorage.INLINE_TEXT, kind: pasting.kind, text: pasting.text, messageDate: null });
+                add(`${DOCUMENT_KIND_LABEL[pasting.kind]} (pasted)`, { storage: DocumentStorage.INLINE_TEXT, kind: pasting.kind, text: pasting.text, fileName: null, messageDate: null });
                 setPasting(null);
               }}
             >

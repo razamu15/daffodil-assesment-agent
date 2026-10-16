@@ -34,10 +34,12 @@ type Props = {
 
 export function MonthBills({ month, bills, payments, helpers, payingBillId, onPay }: Props) {
   return (
-    <section className="month-bills">
-      <h2>Bills for {formatMonth(month)}</h2>
+    <section className="panel month-bills">
+      <header className="panel-head">
+        <h2>Bills for {formatMonth(month)}</h2>
+      </header>
       {bills.length === 0 ? (
-        <p className="muted">No bills for this month yet. Drop one into the assistant when it arrives.</p>
+        <p className="muted panel-body">No bills for this month yet. Drop one into the assistant when it arrives.</p>
       ) : (
         <ul className="bill-list">
           {bills.map((bill) => (

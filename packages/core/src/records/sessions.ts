@@ -7,25 +7,30 @@
  * if dispatch throws).
  */
 import { StoreCommitError, StoredEntity, TurnStatus, WriteConditionKind } from "@helper-assistant/domain";
-import type { Id, RouteBody, Session, Turn, WriteOp } from "@helper-assistant/domain";
+import type { Id, RouteBody, Session, SourceDocument, Turn, WriteOp } from "@helper-assistant/domain";
 import type { CoreDeps } from "../deps";
 import { CoreError, CoreErrorCode, notFound } from "../errors";
 
 const SESSION_TITLE_MAX_CHARS = 60;
-/** Title for a chat whose first message has no text (attachments only). */
+/** Title for a chat whose first message has no text and no named files. */
 const UNTITLED_SESSION = "New chat";
 
-function sessionTitle(text: string): string {
+/** The first message's text; for files only, what was added ("02-priya-rates.png and 7 more"). */
+function sessionTitle(text: string, documents: readonly SourceDocument[]): string {
   const oneLine = text.trim().replace(/\s+/g, " ");
-  if (oneLine === "") return UNTITLED_SESSION;
-  return oneLine.length <= SESSION_TITLE_MAX_CHARS ? oneLine : `${oneLine.slice(0, SESSION_TITLE_MAX_CHARS - 1)}…`;
+  const named = documents.flatMap((d) => (d.fileName === null ? [] : [d.fileName]));
+  const title = oneLine !== "" ? oneLine : named.length === 0 ? UNTITLED_SESSION : `${named[0]}${named.length > 1 ? ` and ${named.length - 1} more` : ""}`;
+  return title.length <= SESSION_TITLE_MAX_CHARS ? title : `${title.slice(0, SESSION_TITLE_MAX_CHARS - 1)}…`;
 }
 
 /** Creates the session if needed, takes its lock and writes a QUEUED turn, atomically. */
 export async function startTurn(deps: CoreDeps, { sessionId, text, attachmentDocIds }: RouteBody<"chat">): Promise<{ session: Session; turn: Turn }> {
   const { store, clock, newId } = deps;
+  const documents: SourceDocument[] = [];
   for (const docId of attachmentDocIds) {
-    if ((await store.getDocument(docId)) === null) throw notFound("Document", docId);
+    const document = await store.getDocument(docId);
+    if (document === null) throw notFound("Document", docId);
+    documents.push(document);
   }
   const now = clock.now();
   const turnId = newId();
@@ -34,7 +39,7 @@ export async function startTurn(deps: CoreDeps, { sessionId, text, attachmentDoc
   let session: Session;
   let sessionOp: WriteOp;
   if (sessionId === null) {
-    session = { sessionId: newId(), title: sessionTitle(text), createdAt: now, lastActiveAt: now, activeTurnId: turnId, version: 1 };
+    session = { sessionId: newId(), title: sessionTitle(text, documents), createdAt: now, lastActiveAt: now, activeTurnId: turnId, version: 1 };
     sessionOp = { record: { entity: StoredEntity.SESSION, value: session }, condition: { kind: WriteConditionKind.ABSENT } };
   } else {
     const current = await store.getSession(sessionId);

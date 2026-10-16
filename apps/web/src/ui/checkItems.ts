@@ -6,8 +6,17 @@
  * Call sites: Bill screen (headline, highlighted rows), ApproveDialog (one
  * reason per item for "Approve anyway…"), Month screen (the one-line "why").
  */
-import { BILL_FINDING_SEVERITY, BillFindingKind, ExceptionTarget, FindingSeverity, LINE_STATUS_SEVERITY, LineStatus } from "@helper-assistant/domain";
-import type { BillCheck, BillFindingKind as BillFindingKindT, FindingSeverity as FindingSeverityT, LineCheck, LineItem, LineStatus as LineStatusT } from "@helper-assistant/domain";
+import { BILL_FINDING_SEVERITY, BillFindingKind, ExceptionTarget, FindingSeverity, LINE_STATUS_SEVERITY, LineStatus, RateVersionRelation } from "@helper-assistant/domain";
+import type {
+  BillCheck,
+  BillFindingKind as BillFindingKindT,
+  FindingSeverity as FindingSeverityT,
+  LineCause,
+  LineCheck,
+  LineItem,
+  LineStatus as LineStatusT,
+  RateVersionRelation as RateVersionRelationT,
+} from "@helper-assistant/domain";
 import { formatCents, formatDate } from "./format";
 import { FINDING_TITLE } from "./labels";
 
@@ -41,9 +50,18 @@ export function lineTitle(line: LineItem): string {
 }
 
 /** Short reason per line status, from the check's own numbers. */
+/** A differing line whose likely cause the checker found, said in a few words. */
+const SHORT_CAUSE: Record<RateVersionRelationT, (lc: LineCheck, cause: LineCause) => string> = {
+  [RateVersionRelation.LATER]: (lc, cause) =>
+    `billed at the new ${formatCents(lc.billedCents)} rate before it started ${formatDate(cause.effectiveFrom)} (agreed ${formatCents(lc.expectedCents!)})`,
+  [RateVersionRelation.EARLIER]: (lc, cause) =>
+    `billed at the old ${formatCents(lc.billedCents)} rate${cause.effectiveTo === null ? "" : ` after it ended ${formatDate(cause.effectiveTo)}`} (agreed ${formatCents(lc.expectedCents!)})`,
+};
+
 const SHORT_LINE_REASON: Record<LineStatusT, (lc: LineCheck) => string> = {
   [LineStatus.MATCHES]: (lc) => `billed ${formatCents(lc.billedCents)}, as agreed`,
-  [LineStatus.DIFFERS]: (lc) => `billed ${formatCents(lc.billedCents)}, agreed ${formatCents(lc.expectedCents!)}`,
+  [LineStatus.DIFFERS]: (lc) =>
+    lc.likelyCause !== null ? SHORT_CAUSE[lc.likelyCause.relation](lc, lc.likelyCause) : `billed ${formatCents(lc.billedCents)}, agreed ${formatCents(lc.expectedCents!)}`,
   [LineStatus.NOT_COVERED]: (lc) => `${formatCents(lc.billedCents)}, not in any agreement`,
   [LineStatus.CANNOT_COMPUTE]: (lc) => lc.explanation,
   [LineStatus.UNVERIFIABLE]: (lc) => lc.explanation,

@@ -7,10 +7,12 @@ import {
   BillFindingKind,
   BillVerdict,
   DayOfWeek,
+  LineCauseKind,
   LineKind,
   LineStatus,
   MultiplierScope,
   PricingRuleKind,
+  RateVersionRelation,
 } from "@helper-assistant/domain";
 import type { AgreementTerm, Bill, LineItem, PricingRule } from "@helper-assistant/domain";
 import { starterPackBills, starterPackTerms, termIds } from "@helper-assistant/fixtures";
@@ -138,5 +140,29 @@ describe("bill-level findings", () => {
     expect(result.findings.map((f) => f.kind)).not.toContain(BillFindingKind.OCCURRENCE_COUNT_PLAUSIBILITY);
     const fourVisits = check(billWith(lupeBill, lupeBill.lineItems.slice(0, 4)), lupeTerms);
     expect(fourVisits.findings).toContainEqual(expect.objectContaining({ kind: BillFindingKind.OCCURRENCE_COUNT_PLAUSIBILITY, billedCount: 4, scheduledCount: 5 }));
+  });
+});
+
+describe("likely cause", () => {
+  it("Lupe's Sep 1 and Sep 8 visits were billed at the new $150 rate before it started (Sep 15)", () => {
+    const result = check(lupeBill, lupeTerms);
+    const early = result.lineChecks.filter((l) => l.status === LineStatus.DIFFERS);
+    expect(early).toHaveLength(2);
+    for (const line of early) {
+      expect(line.likelyCause).toEqual({
+        kind: LineCauseKind.RATE_FROM_OTHER_PERIOD,
+        termId: termIds.lupeRegular150,
+        relation: RateVersionRelation.LATER,
+        effectiveFrom: "2026-09-15",
+        effectiveTo: null,
+      });
+      expect(line.explanation).toContain("only starts Sep 15");
+    }
+    expect(result.lineChecks.filter((l) => l.status === LineStatus.MATCHES).every((l) => l.likelyCause === null)).toBe(true);
+  });
+
+  it("a difference no other version explains has no cause", () => {
+    const odd = { ...lupeBill.lineItems[0]!, amountBilledCents: 14500 };
+    expect(check(billWith(lupeBill, [odd]), lupeTerms).lineChecks[0]).toMatchObject({ status: LineStatus.DIFFERS, likelyCause: null });
   });
 });

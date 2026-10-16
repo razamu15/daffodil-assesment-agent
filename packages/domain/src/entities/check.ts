@@ -8,8 +8,8 @@
  * constants.ts, and the verdict is the worst severity present.
  */
 import { z } from "zod";
-import { BillFindingKind, BillVerdictSchema, DayOfWeekSchema, LineStatusSchema } from "../enums";
-import { CentsSchema, IdSchema, InstantSchema, ServiceKeySchema, VersionSchema } from "../primitives";
+import { BillFindingKind, BillVerdictSchema, DayOfWeekSchema, LineCauseKind, LineStatusSchema, RateVersionRelationSchema } from "../enums";
+import { CentsSchema, IdSchema, InstantSchema, LocalDateSchema, ServiceKeySchema, VersionSchema } from "../primitives";
 import { TermVersionRefSchema } from "./agreement";
 
 /** One step of "why this number": e.g. { "0.5h × $28/hr after 11pm", 1400 }. */
@@ -18,6 +18,18 @@ export const BreakdownStepSchema = z.object({
   amountCents: CentsSchema,
 });
 export type BreakdownStep = z.infer<typeof BreakdownStepSchema>;
+
+export const LineCauseSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal(LineCauseKind.RATE_FROM_OTHER_PERIOD),
+    /** The version whose price equals the billed amount. */
+    termId: IdSchema,
+    relation: RateVersionRelationSchema,
+    effectiveFrom: LocalDateSchema,
+    effectiveTo: LocalDateSchema.nullable(),
+  }),
+]);
+export type LineCause = z.infer<typeof LineCauseSchema>;
 
 export const LineCheckSchema = z.object({
   lineId: IdSchema,
@@ -32,6 +44,8 @@ export const LineCheckSchema = z.object({
   assumptions: z.array(z.string()),
   /** Plain words: "Billed $150, agreed $140 until Sep 15." */
   explanation: z.string(),
+  /** For a DIFFERS line, what most likely happened, when the checker can tell. null otherwise. */
+  likelyCause: LineCauseSchema.nullable(),
 });
 export type LineCheck = z.infer<typeof LineCheckSchema>;
 

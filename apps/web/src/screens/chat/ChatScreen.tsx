@@ -15,10 +15,13 @@ export function ChatScreen({ sessionId, draft }: { sessionId: Id | null; draft: 
   return (
     <section className="screen chat-screen">
       <div className="chat">
-        <aside className="session-list">
-          <a className="button primary" href={hrefFor(routes.chat())}>
-            New chat
-          </a>
+        <aside className="panel session-list">
+          <header className="panel-head">
+            <h2>Chats</h2>
+            <a className="button primary small-button" href={hrefFor(routes.chat())}>
+              New chat
+            </a>
+          </header>
           <Loaded query={sessions}>
             {({ sessions: list }) => (
               <ul>
@@ -34,7 +37,9 @@ export function ChatScreen({ sessionId, draft }: { sessionId: Id | null; draft: 
             )}
           </Loaded>
         </aside>
-        <Conversation sessionId={sessionId} draft={draft} intro={CHAT_INTRO} onSessionStarted={(id) => navigate(routes.chat(id))} />
+        <section className="panel chat-main">
+          <Conversation sessionId={sessionId} draft={draft} intro={CHAT_INTRO} onSessionStarted={(id) => navigate(routes.chat(id))} />
+        </section>
         <DecidedPanel sessionId={sessionId} />
       </div>
     </section>

@@ -3,7 +3,7 @@
  * "Loop"): tool_use handling, multiple calls, errors, history and hints, the
  * lock, and the Turn trace.
  */
-import { ChatRole, MemoryStrategy, ModelStopReason, StoredEntity, TurnStatus, WriteConditionKind } from "@helper-assistant/domain";
+import { ChatRole, DocumentKind, MemoryStrategy, ModelStopReason, splitAttachmentMarker, StoredEntity, TurnStatus, WriteConditionKind } from "@helper-assistant/domain";
 import { billIds, docIds } from "@helper-assistant/fixtures";
 import { startTurn } from "@helper-assistant/core";
 import { describe, expect, it } from "vitest";
@@ -69,14 +69,17 @@ describe("runTurn", () => {
     expect(second.system.at(-1)).toMatch(/may be outdated[\s\S]*Jordan likes short summaries/);
   });
 
-  it("names attachments by id and kind, never inlining their content", async () => {
+  it("names attachments by id, kind and file name, never inlining their content", async () => {
     const deps = await starterPackAgent([FakeModel.text("Got it.")]);
     await chat(deps, "Here's Priya's bill", { attachmentDocIds: [docIds.priyaBill] });
     const [request] = deps.model.requests;
     const userText = request!.messages[0]!.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-    expect(userText).toContain(`${docIds.priyaBill} (BILL_TEXT)`);
+    expect(splitAttachmentMarker(userText)).toEqual({
+      text: "Here's Priya's bill",
+      attachments: [{ docId: docIds.priyaBill, kind: DocumentKind.BILL_TEXT, fileName: "06-priya-september-bill.txt" }],
+    });
     expect(userText).not.toContain("Total: $626");
-    expect(request!.system.join("\n")).toContain(`${docIds.priyaBill} (BILL_TEXT)`);
+    expect(request!.system.join("\n")).toContain(`${docIds.priyaBill} (BILL_TEXT, file "06-priya-september-bill.txt")`);
   });
 
   it.each([

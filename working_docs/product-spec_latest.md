@@ -210,7 +210,9 @@ You weren't sure. Here's the reasoning.
 
 **Start state:** The app starts empty. The first screen says: *"Add what you have"* with the assistant right beside it, ready for the starter-pack folder.
 
-*Changed 2026-10-16:* Month and Bills were two screens; they're one now (Home), because "has the bill come?" and "which bills are there?" are the same question. Agreement cards show prices as a table, not a run-on line.
+*Changed 2026-10-16:* Month and Bills were two screens; they're one now (Home), because "has the bill come?" and "which bills are there?" are the same question. Agreement cards show prices as a table, not a run-on line, with assumptions folded behind "Show assumptions" like the source.
+
+**Look and feel:** a warm, calm "home ledger". Linen background, warm-white panels with soft borders, a sage accent and a terracotta house mark; Fraunces for headings, Nunito Sans for text. Every area is a titled panel; Home and the Assistant fill the window and scroll inside their panels. Assistant replies render their Markdown (headings, lists, tables); Jordan's attachments show as file-name chips.
 
 ---
 

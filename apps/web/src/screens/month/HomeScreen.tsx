@@ -58,13 +58,23 @@ export function HomeScreen({ month }: { month: MonthKey | null }) {
 
 function FirstRun() {
   return (
-    <div className="first-run">
-      <h1>Add what you have</h1>
-      <p>
-        Paste notes, drop screenshots of texts with your helpers, their bills, or a whole folder into the assistant. It reads them, shows you what it understood,
-        and saves nothing until you confirm.
-      </p>
-    </div>
+    <section className="panel first-run">
+      <div className="panel-body">
+        <h1>Welcome home</h1>
+        <p className="muted">Keep track of what you agreed with the people who help at home, and check their bills before you pay.</p>
+        <ol className="first-steps">
+          <li>
+            <strong>Give the assistant what you have.</strong> Notes, screenshots of texts, bills, or a whole folder, in the panel on the right.
+          </li>
+          <li>
+            <strong>Confirm what it understood.</strong> Nothing is saved until you say so.
+          </li>
+          <li>
+            <strong>Check each bill and approve it.</strong> Your month will fill in here.
+          </li>
+        </ol>
+      </div>
+    </section>
   );
 }
 
@@ -75,8 +85,8 @@ function AssistantPanel() {
     setSessionId(id);
   };
   return (
-    <section className="assistant-panel">
-      <header className="assistant-panel-head">
+    <section className="panel assistant-panel">
+      <header className="panel-head">
         <h2>Assistant</h2>
         {sessionId !== null && (
           <>
@@ -122,27 +132,32 @@ function MonthView({ status, allBills, payments, helpers }: MonthData) {
       {status.month >= thisMonth && <p className="muted">This month isn't over yet. Bills usually come at the start of next month.</p>}
       <MonthCharts month={status.month} rows={status.rows} bills={allBills} helpers={helpers} />
 
-      <section className="month-card">
-        {status.rows.length === 0 ? (
-          <p className="muted">No helpers were working in {formatMonth(status.month)}.</p>
-        ) : (
-          <ul className="month-rows">
-            {status.rows.map((row) => (
-              <MonthRow
-                key={row.helperId}
-                row={row}
-                asOf={status.asOf}
-                bill={row.billId === null ? null : (billById.get(row.billId) ?? null)}
-                onApprove={(bill) => setApproving({ bill, helper: helperById.get(row.helperId)! })}
-                onMarkPaid={(billId) => {
-                  setPayingBillId(billId);
-                  document.getElementById(`bill-${billId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }}
-              />
-            ))}
-          </ul>
-        )}
-        <footer className="month-foot">{waiting === 0 ? "Nothing waiting on you this month." : `Waiting on you: ${plural(waiting, "bill")}`}</footer>
+      <section className="panel month-card">
+        <header className="panel-head">
+          <h2>Helpers this month</h2>
+          <span className={waiting === 0 ? "muted small" : "panel-flag"}>{waiting === 0 ? "Nothing waiting on you" : `Waiting on you: ${plural(waiting, "bill")}`}</span>
+        </header>
+        <div className="panel-body">
+          {status.rows.length === 0 ? (
+            <p className="muted">No helpers were working in {formatMonth(status.month)}.</p>
+          ) : (
+            <ul className="month-rows">
+              {status.rows.map((row) => (
+                <MonthRow
+                  key={row.helperId}
+                  row={row}
+                  asOf={status.asOf}
+                  bill={row.billId === null ? null : (billById.get(row.billId) ?? null)}
+                  onApprove={(bill) => setApproving({ bill, helper: helperById.get(row.helperId)! })}
+                  onMarkPaid={(billId) => {
+                    setPayingBillId(billId);
+                    document.getElementById(`bill-${billId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
       <MonthBills month={status.month} bills={bills} payments={payments} helpers={helpers} payingBillId={payingBillId} onPay={setPayingBillId} />
       {approving !== null && <ApproveDialog bill={approving.bill} helper={approving.helper} onClose={() => setApproving(null)} />}

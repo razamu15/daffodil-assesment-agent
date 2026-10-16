@@ -42,8 +42,8 @@ export function MonthCharts({ month, rows, bills, helpers }: Props) {
 
   return (
     <div className="month-charts">
-      <figure className="chart">
-        <figcaption>Billed in {formatMonth(month)}</figcaption>
+      <figure className="panel chart">
+        <figcaption className="panel-head">Billed in {formatMonth(month)}</figcaption>
         {thisMonth.length === 0 ? (
           <p className="muted small">No bills yet{helperCount > 0 ? ` from your ${helperCount} helper${helperCount === 1 ? "" : "s"}` : ""}.</p>
         ) : (
@@ -61,8 +61,8 @@ export function MonthCharts({ month, rows, bills, helpers }: Props) {
           </ul>
         )}
       </figure>
-      <figure className="chart">
-        <figcaption>Billed per month</figcaption>
+      <figure className="panel chart">
+        <figcaption className="panel-head">Billed per month</figcaption>
         <ol className="vbars" aria-label="Total billed in each of the last six months">
           {trend.map((t) => (
             <li key={t.month} title={`${formatMonth(t.month)}: ${formatCents(t.billed)}`} className={t.month === month ? "current" : undefined}>

@@ -9,8 +9,8 @@
  *
  * Call site: runTurn.
  */
-import { ChatRole, ModelRole } from "@helper-assistant/domain";
-import type { ChatMessage, ChatRole as ChatRoleT, DocumentKind, Id, ModelMessage, ModelRole as ModelRoleT } from "@helper-assistant/domain";
+import { attachmentMarker, ChatRole, ModelRole } from "@helper-assistant/domain";
+import type { AttachmentRef, ChatMessage, ChatRole as ChatRoleT, ModelMessage, ModelRole as ModelRoleT } from "@helper-assistant/domain";
 
 const MODEL_ROLE_BY_CHAT_ROLE: Record<ChatRoleT, ModelRoleT> = {
   [ChatRole.USER]: ModelRole.USER,
@@ -35,8 +35,8 @@ export function toModelMessages(chat: readonly ChatMessage[]): ModelMessage[] {
  * through the quarantined extraction call. The marker stays in history so a
  * later turn can still refer to the document.
  */
-export function userMessageText(text: string, attachments: { docId: Id; kind: DocumentKind }[]): string {
+export function userMessageText(text: string, attachments: AttachmentRef[]): string {
   if (attachments.length === 0) return text;
-  const marker = `[Attached: ${attachments.map((a) => `${a.docId} (${a.kind})`).join(", ")}]`;
+  const marker = attachmentMarker(attachments);
   return text.trim() === "" ? marker : `${text}\n\n${marker}`;
 }

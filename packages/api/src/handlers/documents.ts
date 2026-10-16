@@ -34,7 +34,7 @@ export function documentHandlers(deps: AppDeps) {
       } else {
         content = { storage: DocumentStorage.INLINE_TEXT, text: body.text };
       }
-      const document = await saveDocument(deps, { docId, kind: body.kind, content, messageDate: body.messageDate, sessionId: body.sessionId });
+      const document = await saveDocument(deps, { docId, kind: body.kind, content, fileName: body.fileName, messageDate: body.messageDate, sessionId: body.sessionId });
       return { document, blobBase64: body.storage === DocumentStorage.BLOB ? body.base64 : null };
     },
 

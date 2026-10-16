@@ -97,13 +97,14 @@ describe("documents", () => {
       storage: DocumentStorage.INLINE_TEXT,
       kind: DocumentKind.PASTED_THREAD,
       text: "Lupe: starting the 15th my regular visit will be $150",
+      fileName: null,
       messageDate: "2026-08-28",
       sessionId: null,
     });
     expect(text).toMatchObject({ document: { kind: DocumentKind.PASTED_THREAD, messageDate: "2026-08-28" }, blobBase64: null });
 
     const base64 = btoa("\x89PNG fake image bytes");
-    const image = await call("uploadDocument", "/api/documents", { storage: DocumentStorage.BLOB, kind: DocumentKind.BILL_SCREENSHOT, mediaType: "image/png", base64, messageDate: null, sessionId: null });
+    const image = await call("uploadDocument", "/api/documents", { storage: DocumentStorage.BLOB, kind: DocumentKind.BILL_SCREENSHOT, mediaType: "image/png", base64, fileName: "bill.png", messageDate: null, sessionId: null });
     const fetched = await call("getDocument", `/api/documents/${image.document.docId}`);
     expect(fetched.blobBase64).toBe(base64);
     expect(fetched.document.content).toMatchObject({ storage: DocumentStorage.BLOB, mediaType: "image/png" });

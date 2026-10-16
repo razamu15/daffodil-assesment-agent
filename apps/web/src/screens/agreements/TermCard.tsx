@@ -5,6 +5,7 @@
  */
 import type { AgreementTerm, Helper } from "@helper-assistant/domain";
 import { hrefFor, routes } from "../../app/routes";
+import { AssumptionsToggle } from "../../ui/common";
 import { PricingTable } from "../../ui/PricingTable";
 import { SourceToggle } from "../../ui/SourceDocumentView";
 
@@ -18,21 +19,14 @@ export function TermCard({ term, helper }: { term: AgreementTerm; helper: Helper
       <PricingTable term={term} />
       <blockquote className="quote">“{term.sourceQuote}”</blockquote>
       <SourceToggle docId={term.sourceDocId} quote={term.sourceQuote} />
-      {term.assumptions.length > 0 && (
-        <div className="assumptions">
-          <span className="assumptions-title">What was assumed</span>
-          <ul>
-            {term.assumptions.map((a) => (
-              <li key={a}>
-                {a}{" "}
-                <a className="small" href={hrefFor(changeDraft(a))}>
-                  Change this…
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <AssumptionsToggle
+        items={term.assumptions}
+        after={(a) => (
+          <a className="small" href={hrefFor(changeDraft(a))}>
+            Change this…
+          </a>
+        )}
+      />
     </article>
   );
 }

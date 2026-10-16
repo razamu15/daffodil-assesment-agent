@@ -90,7 +90,7 @@ export const recordHandlers: Pick<Handlers, RecordRoutes> = {
 
   uploadDocument: (world, { body }) => {
     const docId = world.newId("doc");
-    const base = { docId, kind: body.kind, messageDate: body.messageDate, receivedAt: world.now(), sessionId: body.sessionId };
+    const base = { docId, kind: body.kind, fileName: body.fileName, messageDate: body.messageDate, receivedAt: world.now(), sessionId: body.sessionId };
     let document: SourceDocument;
     if (body.storage === DocumentStorage.BLOB) {
       world.blobs.set(docId, body.base64);

@@ -7,10 +7,12 @@
  * Call sites: ChatScreen (full screen), HomeScreen (the side panel).
  */
 import { useEffect, useRef, useState } from "react";
-import { ChatRole, PendingActionStatus, TURN_POLL_INTERVAL_MS, TurnStatus } from "@helper-assistant/domain";
+import { ChatRole, PendingActionStatus, splitAttachmentMarker, TURN_POLL_INTERVAL_MS, TurnStatus } from "@helper-assistant/domain";
 import type { AgreementTerm, ChatMessage, Helper, Id, OutboundMessage, PendingAction, Session, TurnStatus as TurnStatusT } from "@helper-assistant/domain";
 import { asClientError, useApiQuery, useApp } from "../../app/AppContext";
 import { ErrorNote, Loaded } from "../../ui/common";
+import { DOCUMENT_KIND_LABEL } from "../../ui/labels";
+import { Markdown } from "../../ui/Markdown";
 import { ActionGroups } from "../decisions/ActionGroups";
 import { MessageList } from "../decisions/MessageList";
 import { Composer } from "./Composer";
@@ -68,6 +70,25 @@ export function Conversation(props: Props) {
   return <Loaded query={query}>{(data) => <ConversationView {...data} {...props} />}</Loaded>;
 }
 
+/** Jordan's message: the text, and any attached files as chips (named by the shared attachment marker). */
+function UserBubble({ text }: { text: string }) {
+  const { text: body, attachments } = splitAttachmentMarker(text);
+  return (
+    <li className="bubble user">
+      {body !== "" && <div className="bubble-text">{body}</div>}
+      {attachments.length > 0 && (
+        <ul className="file-chips" aria-label="Attached files">
+          {attachments.map((a) => (
+            <li key={a.docId} className="file-chip" title={DOCUMENT_KIND_LABEL[a.kind]}>
+              <span aria-hidden="true">📄</span> {a.fileName ?? DOCUMENT_KIND_LABEL[a.kind]}
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 /** Polls a running turn; refreshes the app when it finishes so the reply and its cards appear. */
 function useTurnPolling(turnId: Id | null): { running: boolean; error: string | null } {
   const { api, refresh } = useApp();
@@ -121,11 +142,13 @@ function ConversationView({ session, messages, pending, helpers, terms, outbound
           </div>
         )}
         <ol className="messages">
-          {messages.map((m, i) => (
-            <li key={`${m.at}-${i}`} className={m.role === ChatRole.USER ? "bubble user" : "bubble assistant"}>
-              {m.text}
-            </li>
-          ))}
+          {messages.map((m, i) =>
+            m.role === ChatRole.USER ? <UserBubble key={`${m.at}-${i}`} text={m.text} /> : (
+              <li key={`${m.at}-${i}`} className="bubble assistant">
+                <Markdown text={m.text} />
+              </li>
+            ),
+          )}
           {running && <li className="bubble assistant thinking">Thinking…</li>}
         </ol>
         {error !== null && <ErrorNote error={error} />}

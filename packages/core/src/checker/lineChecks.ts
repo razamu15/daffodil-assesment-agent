@@ -6,8 +6,19 @@
  *
  * Call site: checkBill.
  */
-import { LineKind, LineStatus, PricingRuleKind } from "@helper-assistant/domain";
-import type { AgreementTerm, Bill, Cents, LineCheck, LineItem, LocalDate, PricingRule } from "@helper-assistant/domain";
+import { LineCauseKind, LineKind, LineStatus, PricingRuleKind, RateVersionRelation } from "@helper-assistant/domain";
+import type {
+  AgreementTerm,
+  Bill,
+  Cents,
+  LineCause,
+  LineCheck,
+  LineItem,
+  LocalDate,
+  PricingRule,
+  RateVersionRelation as RateVersionRelationT,
+} from "@helper-assistant/domain";
+import { formatDay } from "../calendar";
 import { formatCents } from "../money";
 import { cannotCompute, PriceOutcome } from "./price";
 import type { Price } from "./price";
@@ -69,9 +80,38 @@ function checkServiceLine({ line, bill, terms }: LineInput): LineResult {
     case TermResolutionKind.AMBIGUOUS:
       return fromPrice(line, null, cannotCompute(resolution.reason));
     case TermResolutionKind.FOUND:
-      return fromPrice(line, resolution.term, priceServiceLine(line, resolution.term));
+      return fromPrice(line, resolution.term, priceServiceLine(line, resolution.term), (expected) => rateFromOtherPeriod(line, resolution.term, terms, expected));
   }
 }
+
+/**
+ * A differing line priced under the same service's other versions: when one of
+ * them charges exactly what was billed, the helper most likely used that rate
+ * outside its dates (Lupe's new $150 rate on a visit before it started).
+ */
+function rateFromOtherPeriod(line: LineItem, applied: AgreementTerm, terms: readonly AgreementTerm[], expectedCents: Cents): LineCause | null {
+  if (line.amountBilledCents === expectedCents) return null;
+  const other = terms.find((t) => {
+    if (t.termId === applied.termId || t.helperId !== applied.helperId || t.serviceKey !== applied.serviceKey) return false;
+    const price = priceServiceLine(line, t);
+    return price.outcome === PriceOutcome.PRICED && price.expectedCents === line.amountBilledCents;
+  });
+  if (other === undefined) return null;
+  return {
+    kind: LineCauseKind.RATE_FROM_OTHER_PERIOD,
+    termId: other.termId,
+    relation: other.effectiveFrom > applied.effectiveFrom ? RateVersionRelation.LATER : RateVersionRelation.EARLIER,
+    effectiveFrom: other.effectiveFrom,
+    effectiveTo: other.effectiveTo,
+  };
+}
+
+/** The plain-words story of a likely cause, for the line's explanation. */
+const CAUSE_TEXT: Record<RateVersionRelationT, (cause: LineCause, billed: string) => string> = {
+  [RateVersionRelation.LATER]: (cause, billed) => `${billed} is the newer rate, which only starts ${formatDay(cause.effectiveFrom)}. It looks like the new rate was used for work before the change.`,
+  [RateVersionRelation.EARLIER]: (cause, billed) =>
+    `${billed} is the older rate${cause.effectiveTo === null ? "" : `, which ended ${formatDay(cause.effectiveTo)}`}. It looks like the old rate was used after the change.`,
+};
 
 function priceServiceLine(line: LineItem, term: AgreementTerm): Price {
   const rules = term.pricingRules.filter((r) => PRICING_MODE_BY_RULE_KIND[r.kind] !== PricingMode.FEE);
@@ -119,23 +159,28 @@ function inEffectForLine(term: AgreementTerm, date: LocalDate | null, bill: Bill
 // ── LineCheck builders ─────────────────────────────────────────────────────
 
 const describeTerm = (term: AgreementTerm): string =>
-  `${term.serviceLabel}, ${term.effectiveTo === null ? `from ${term.effectiveFrom}` : `${term.effectiveFrom} to ${term.effectiveTo}`}`;
+  `${term.serviceLabel}, ${term.effectiveTo === null ? `from ${formatDay(term.effectiveFrom)}` : `${formatDay(term.effectiveFrom)} to ${formatDay(term.effectiveTo)}`}`;
 
-function fromPrice(line: LineItem, term: AgreementTerm | null, price: Price): LineResult {
+/** `causeOf` explains a differing amount, when the caller can (service lines). */
+function fromPrice(line: LineItem, term: AgreementTerm | null, price: Price, causeOf: (expectedCents: Cents) => LineCause | null = () => null): LineResult {
   const billed = line.amountBilledCents;
   const appliedTerms = term === null ? [] : [term];
   const termAssumptions = term?.assumptions ?? [];
   if (price.outcome === PriceOutcome.CANNOT_COMPUTE) {
     return {
       appliedTerms,
-      check: lineCheck(line, LineStatus.CANNOT_COMPUTE, null, [], appliedTerms, termAssumptions, `Billed ${formatCents(billed)}. Can't compute: ${price.reason}`),
+      check: lineCheck(line, LineStatus.CANNOT_COMPUTE, null, [], appliedTerms, termAssumptions, `Billed ${formatCents(billed)}. Can't compute: ${price.reason}`, null),
     };
   }
   const matches = price.expectedCents === billed;
+  const cause = matches ? null : causeOf(price.expectedCents);
   const termText = term === null ? "" : ` (${describeTerm(term)})`;
+  const date = lineDate(line);
   const explanation = matches
     ? `Billed ${formatCents(billed)}, as agreed${termText}.`
-    : `Billed ${formatCents(billed)}, agreed ${formatCents(price.expectedCents)}${termText}.`;
+    : cause !== null
+      ? `Billed ${formatCents(billed)}, but the agreed price${date === null ? "" : ` on ${formatDay(date)}`} is ${formatCents(price.expectedCents)}${termText}. ${CAUSE_TEXT[cause.relation](cause, formatCents(billed))}`
+      : `Billed ${formatCents(billed)}, but the agreed price is ${formatCents(price.expectedCents)}${termText}.`;
   return {
     appliedTerms,
     check: lineCheck(
@@ -146,6 +191,7 @@ function fromPrice(line: LineItem, term: AgreementTerm | null, price: Price): Li
       appliedTerms,
       [...termAssumptions, ...price.assumptions],
       explanation,
+      cause,
     ),
   };
 }
@@ -153,12 +199,12 @@ function fromPrice(line: LineItem, term: AgreementTerm | null, price: Price): Li
 function notCovered(line: LineItem, reason: string): LineResult {
   return {
     appliedTerms: [],
-    check: lineCheck(line, LineStatus.NOT_COVERED, null, [], [], [], `Billed ${formatCents(line.amountBilledCents)}. ${reason}`),
+    check: lineCheck(line, LineStatus.NOT_COVERED, null, [], [], [], `Billed ${formatCents(line.amountBilledCents)}. ${reason}`, null),
   };
 }
 
 function unverifiable(line: LineItem, explanation: string): LineResult {
-  return { appliedTerms: [], check: lineCheck(line, LineStatus.UNVERIFIABLE, null, [], [], [], explanation) };
+  return { appliedTerms: [], check: lineCheck(line, LineStatus.UNVERIFIABLE, null, [], [], [], explanation, null) };
 }
 
 function lineCheck(
@@ -169,6 +215,7 @@ function lineCheck(
   appliedTerms: readonly AgreementTerm[],
   assumptions: string[],
   explanation: string,
+  likelyCause: LineCause | null,
 ): LineCheck {
   return {
     lineId: line.lineId,
@@ -180,5 +227,6 @@ function lineCheck(
     appliedTermIds: appliedTerms.map((t) => t.termId),
     assumptions,
     explanation,
+    likelyCause,
   };
 }

@@ -1,5 +1,5 @@
 /** Small shared building blocks: pills, loading/error states, a modal dialog. Used by every screen. */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { LoadStatus } from "../app/AppContext";
 import type { Query } from "../app/AppContext";
@@ -49,6 +49,36 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
 }
 
 /** A labelled list of assumptions ("What I assumed"), hidden when there are none. */
+/**
+ * Assumptions folded behind a "Show assumptions (n)" link, like "Show source".
+ * `after` adds something per item (Agreements: a "Change this…" link); `what`
+ * names the list in the link ("how this bill was read").
+ *
+ * Call sites: agreement-change cards (ActionCard, DecidedPanel), TermCard, and the
+ * bill review (each line's assumptions, how the bill was read).
+ */
+export function AssumptionsToggle({ items, after, what = "assumptions" }: { items: readonly string[]; after?: (item: string) => ReactNode; what?: string }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="assumptions">
+      <button type="button" className="link-button" onClick={() => setOpen(!open)} aria-expanded={open}>
+        {open ? `Hide ${what}` : `Show ${what} (${items.length})`}
+      </button>
+      {open && (
+        <ul>
+          {items.map((a) => (
+            <li key={a}>
+              {a}
+              {after !== undefined && <> {after(a)}</>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function Assumptions({ items, title = "What was assumed" }: { items: readonly string[]; title?: string }) {
   if (items.length === 0) return null;
   return (

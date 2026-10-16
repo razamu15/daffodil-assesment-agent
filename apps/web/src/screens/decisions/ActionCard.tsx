@@ -9,7 +9,7 @@ import { useState } from "react";
 import { ApiErrorCode, PendingActionStatus, PendingActionType } from "@helper-assistant/domain";
 import type { AgreementTerm, Helper, PendingAction, PendingActionType as PendingActionTypeT } from "@helper-assistant/domain";
 import { asClientError, useApp } from "../../app/AppContext";
-import { Assumptions, ErrorNote, StatusPill } from "../../ui/common";
+import { AssumptionsToggle, ErrorNote, StatusPill } from "../../ui/common";
 import { formatInstant } from "../../ui/format";
 import { ACTION_STATUS_VIEW, ACTION_TYPE_LABEL, RESOLVER_LABEL } from "../../ui/labels";
 import { SourceToggle } from "../../ui/SourceDocumentView";
@@ -60,7 +60,7 @@ export function ActionCard({ action, helpers, terms }: { action: PendingAction; 
       </header>
       <h3 className="action-summary">{action.summary}</h3>
       <ActionDetails action={action} ctx={{ helpers, terms, messageBody: body, onMessageBodyChange: pending ? setBody : null }} />
-      <Assumptions items={action.assumptions} />
+      <AssumptionsToggle items={action.assumptions} />
       {action.sourceDocId !== null && action.type !== PendingActionType.AGREEMENT_CHANGE && <SourceToggle docId={action.sourceDocId} label="Show what this came from" />}
       {!pending && (
         <p className="muted small">

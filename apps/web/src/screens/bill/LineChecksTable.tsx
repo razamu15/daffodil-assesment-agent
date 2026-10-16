@@ -6,7 +6,7 @@
 import { Fragment, useState } from "react";
 import type { AgreementTerm, BillCheck, LineCheck, LineItem } from "@helper-assistant/domain";
 import { lineNeedsDecision } from "../../ui/checkItems";
-import { Assumptions, StatusPill } from "../../ui/common";
+import { AssumptionsToggle, StatusPill } from "../../ui/common";
 import { formatCents, formatTimeRange, formatWeekdayDate } from "../../ui/format";
 import { LINE_STATUS_VIEW } from "../../ui/labels";
 import { SourceToggle } from "../../ui/SourceDocumentView";
@@ -90,7 +90,10 @@ function LineWhy({ line, lc, terms }: { line: LineItem; lc: LineCheck; terms: Ag
   const applied = terms.filter((t) => lc.appliedTermIds.includes(t.termId));
   return (
     <div className="why">
-      <p className="why-explanation">{lc.explanation}</p>
+      <p className={`why-explanation${lc.likelyCause !== null ? " has-cause" : ""}`}>
+        {lc.likelyCause !== null && <span className="cause-tag">Likely mix-up</span>}
+        {lc.explanation}
+      </p>
       {lc.breakdown.length > 0 && (
         <table className="breakdown">
           <tbody>
@@ -126,7 +129,7 @@ function LineWhy({ line, lc, terms }: { line: LineItem; lc: LineCheck; terms: Ag
           word, not an agreement. Only you can accept it.
         </div>
       )}
-      <Assumptions items={lc.assumptions} />
+      <AssumptionsToggle items={lc.assumptions} />
     </div>
   );
 }

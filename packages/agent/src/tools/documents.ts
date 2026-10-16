@@ -34,6 +34,7 @@ async function saveStatementIfCited(ctx: ToolContext, docId: Id): Promise<Source
     docId,
     kind: DocumentKind.CHAT_STATEMENT,
     content: { storage: DocumentStorage.INLINE_TEXT, text: ctx.statement.text },
+    fileName: null,
     // Typed in chat today, so today is when it was said.
     messageDate: ctx.deps.clock.today(),
     sessionId: ctx.sessionId,

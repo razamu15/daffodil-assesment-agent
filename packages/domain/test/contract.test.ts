@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   AgreementExtractionSchema,
+  attachmentMarker,
   BillExtractionSchema,
+  DocumentKind,
   FixedClock,
   ServiceKeySchema,
+  splitAttachmentMarker,
   SystemClock,
   apiRoutes,
   toolInputSchemas,
@@ -57,5 +60,17 @@ describe("clocks", () => {
 
   it("SystemClock formats today as YYYY-MM-DD", () => {
     expect(new SystemClock().today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("chat attachment marker", () => {
+  it("round-trips attachments and leaves plain text alone", () => {
+    const attachments = [
+      { docId: "doc-1", kind: DocumentKind.BILL_SCREENSHOT, fileName: "07-lupe, september \"bill\".png" },
+      { docId: "doc-2", kind: DocumentKind.TYPED_NOTES, fileName: null },
+    ];
+    expect(splitAttachmentMarker(`Here you go\n\n${attachmentMarker(attachments)}`)).toEqual({ text: "Here you go", attachments });
+    expect(splitAttachmentMarker("[Attached files: not json]")).toEqual({ text: "[Attached files: not json]", attachments: [] });
+    expect(splitAttachmentMarker("just text")).toEqual({ text: "just text", attachments: [] });
   });
 });

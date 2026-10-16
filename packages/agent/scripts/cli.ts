@@ -54,7 +54,7 @@ async function handle(line: string, deps: AgentDeps, state: CliState, rl: Interf
       const body: string[] = [];
       for (let next = await rl.question("... "); next !== "/end"; next = await rl.question("... ")) body.push(next);
       const docId = deps.newId();
-      await saveDocument(deps, { docId, kind, content: { storage: DocumentStorage.INLINE_TEXT, text: body.join("\n") }, messageDate: null, sessionId: null });
+      await saveDocument(deps, { docId, kind, content: { storage: DocumentStorage.INLINE_TEXT, text: body.join("\n") }, fileName: null, messageDate: null, sessionId: null });
       state.documentIds.push(docId);
       console.log(`Saved ${docId} (${kind}). /attach ${docId} to use it.`);
       return;

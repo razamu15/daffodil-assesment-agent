@@ -8,6 +8,7 @@ export * from "./constants";
 export * from "./targetKeys";
 export * from "./errors";
 export * from "./clock";
+export * from "./chatAttachments";
 
 export * from "./entities/people";
 export * from "./entities/document";

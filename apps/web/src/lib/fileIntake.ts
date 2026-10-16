@@ -68,17 +68,17 @@ export async function intakeFile(file: File): Promise<IntakeResult> {
   try {
     if (format === FileFormat.IMAGE) {
       const { mediaType, base64 } = await resizeImageForUpload(file);
-      return { name, request: { storage: DocumentStorage.BLOB, kind, mediaType, base64, messageDate: null } };
+      return { name, request: { storage: DocumentStorage.BLOB, kind, mediaType, base64, fileName: file.name, messageDate: null } };
     }
     if (format === FileFormat.PDF) {
       const base64 = base64Of(await file.arrayBuffer());
       if (base64.length > UPLOAD_MAX_BASE64_CHARS) return { name, unsupported: "This PDF is too large (about 3 MB at most)." };
-      return { name, request: { storage: DocumentStorage.BLOB, kind, mediaType: "application/pdf", base64, messageDate: null } };
+      return { name, request: { storage: DocumentStorage.BLOB, kind, mediaType: "application/pdf", base64, fileName: file.name, messageDate: null } };
     }
     const text = await file.text();
     if (text.trim() === "") return { name, unsupported: "The file is empty." };
     if (text.length > UPLOAD_MAX_TEXT_CHARS) return { name, unsupported: `The file is too long (over ${UPLOAD_MAX_TEXT_CHARS.toLocaleString()} characters).` };
-    return { name, request: { storage: DocumentStorage.INLINE_TEXT, kind, text, messageDate: null } };
+    return { name, request: { storage: DocumentStorage.INLINE_TEXT, kind, text, fileName: file.name, messageDate: null } };
   } catch (e) {
     return { name, unsupported: e instanceof Error ? e.message : "Couldn't read this file." };
   }

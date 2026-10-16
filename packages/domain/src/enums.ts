@@ -133,6 +133,19 @@ export const LineStatusSchema = z.enum(["MATCHES", "DIFFERS", "NOT_COVERED", "CA
 export const LineStatus = LineStatusSchema.enum;
 export type LineStatus = z.infer<typeof LineStatusSchema>;
 
+/** Why a DIFFERS line likely differs. Found by the checker, never guessed by the model. */
+export const LineCauseKindSchema = z.enum([
+  /** The billed amount is exactly what another version of the same service charges: a rate used outside its dates. */
+  "RATE_FROM_OTHER_PERIOD",
+]);
+export const LineCauseKind = LineCauseKindSchema.enum;
+export type LineCauseKind = z.infer<typeof LineCauseKindSchema>;
+
+/** Where the other version sits relative to the one in effect on the line's date. */
+export const RateVersionRelationSchema = z.enum(["LATER", "EARLIER"]);
+export const RateVersionRelation = RateVersionRelationSchema.enum;
+export type RateVersionRelation = z.infer<typeof RateVersionRelationSchema>;
+
 export const FindingSeveritySchema = z.enum(["DISCREPANCY", "NEEDS_INFO", "INFO"]);
 export const FindingSeverity = FindingSeveritySchema.enum;
 export type FindingSeverity = z.infer<typeof FindingSeveritySchema>;

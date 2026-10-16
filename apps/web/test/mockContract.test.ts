@@ -56,10 +56,10 @@ const CALL_EVERY_ROUTE: Record<ApiRouteName, (c: ApiClient) => Promise<unknown>>
     return c.call("getSessionMessages", { params: { id: sessionId } });
   },
   uploadDocument: (c) =>
-    c.call("uploadDocument", { body: { storage: DocumentStorage.INLINE_TEXT, kind: DocumentKind.TYPED_NOTES, text: "Notes", messageDate: null, sessionId: null } }),
+    c.call("uploadDocument", { body: { storage: DocumentStorage.INLINE_TEXT, kind: DocumentKind.TYPED_NOTES, text: "Notes", fileName: null, messageDate: null, sessionId: null } }),
   getDocument: async (c) => {
     const { document } = await c.call("uploadDocument", {
-      body: { storage: DocumentStorage.BLOB, kind: DocumentKind.BILL_SCREENSHOT, mediaType: "image/png", base64: "aGVsbG8=", messageDate: null, sessionId: null },
+      body: { storage: DocumentStorage.BLOB, kind: DocumentKind.BILL_SCREENSHOT, mediaType: "image/png", base64: "aGVsbG8=", fileName: "bill.png", messageDate: null, sessionId: null },
     });
     return c.call("getDocument", { params: { id: document.docId } });
   },

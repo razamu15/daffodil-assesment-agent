@@ -96,6 +96,7 @@ content (S3 key + image or PDF media type, or text), messageDate?, receivedAt, s
 - *Why `messageDate`:* "starting the 15th" can only be resolved against the date of the message.
 - *Passed on:* a `source` string on each fact. It duplicates, can't show the original, and can't be reused.
 - Immutable. Never edited.
+- *`fileName` (2026-10-16):* what Jordan's file was called, or null for pasted text and chat statements. It names the attachment in chat (and the chat itself when the first message is only files), and the model sees it too ("07-lupe-september-bill.png" is a useful hint).
 - *Formats (2026-10-16):* images and PDFs are stored as blobs (PDFs reach the model as a document block); any text file is stored as text. The UI suggests a kind from the file's format and name, and Jordan can change it before sending. Other formats are refused with a reason.
 
 #### AgreementTerm
@@ -252,6 +253,8 @@ Helper role and service are **not** enums: role is free text and services are pe
 ## 3. The checker (pure code, no model)
 
 The heart of correctness. `checkBill(bill, termsInEffect, household) → BillCheck`.
+
+**Likely cause (2026-10-16).** When a line DIFFERS, the checker also prices it under the same service's other versions. If one charges exactly what was billed, the line carries `likelyCause: RATE_FROM_OTHER_PERIOD` (which version, later or earlier, its dates) and a plain-words explanation: "$150 is the newer rate, which only starts Sep 15. It looks like the new rate was used for work before the change." It's code, not the model, so the same bill always gets the same story; the review screen, Home and the agent all read it from the check.
 
 ### 3.1 Line status
 

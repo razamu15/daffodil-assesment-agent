@@ -37,7 +37,7 @@ const SCREEN_VIEW: ScreenViews = {
 };
 
 /** Screens laid out to fill the window: the page doesn't scroll, their cards do. */
-const FILL_SCREENS: readonly Screen[] = [Screen.HOME];
+const FILL_SCREENS: readonly Screen[] = [Screen.HOME, Screen.CHAT];
 
 /** Which nav item a screen belongs to. */
 const NAV_SECTION: Record<Screen, Screen | null> = {
@@ -83,6 +83,9 @@ function Shell() {
     <div className={`shell${FILL_SCREENS.includes(route.screen) ? " fill" : ""}`}>
       <header className="topbar">
         <a className="brand" href={hrefFor(routes.home())}>
+          <svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 11.2 12 4l9 7.2V20a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z" />
+          </svg>
           Helper Assistant
         </a>
         <nav className="nav">

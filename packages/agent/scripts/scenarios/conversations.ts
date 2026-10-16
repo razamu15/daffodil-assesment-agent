@@ -46,7 +46,7 @@ const INJECTED_THEO_BILL_ID = "doc-scenario-injected-bill";
 const CORRECTED_LUPE_BILL_ID = "doc-scenario-corrected-lupe";
 
 async function pasteDocument(deps: AgentDeps, docId: string, kind: DocumentKind, text: string): Promise<void> {
-  await saveDocument(deps, { docId, kind, content: { storage: DocumentStorage.INLINE_TEXT, text }, messageDate: null, sessionId: null });
+  await saveDocument(deps, { docId, kind, content: { storage: DocumentStorage.INLINE_TEXT, text }, fileName: null, messageDate: null, sessionId: null });
 }
 
 export const CONVERSATIONS: Conversation[] = [

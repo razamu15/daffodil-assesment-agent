@@ -18,6 +18,8 @@ export const SourceDocumentSchema = z.object({
   docId: IdSchema,
   kind: DocumentKindSchema,
   content: DocumentContentSchema,
+  /** What Jordan's file was called ("07-lupe-september-bill.png"). null for pasted text and chat statements. */
+  fileName: z.string().min(1).max(200).nullable(),
   /**
    * Date the message was written, if Jordan supplied it at upload. Usually null:
    * extraction then infers it and records the inference as an assumption.

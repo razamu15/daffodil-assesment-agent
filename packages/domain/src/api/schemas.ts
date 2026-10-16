@@ -97,6 +97,8 @@ export const UploadDocumentRequestSchema = z.discriminatedUnion("storage", [
     storage: z.literal(DocumentStorage.INLINE_TEXT),
     kind: DocumentKindSchema,
     text: z.string().min(1).max(UPLOAD_MAX_TEXT_CHARS),
+    /** The file's name when it came from a file; null for pasted text. */
+    fileName: z.string().min(1).max(200).nullable(),
     messageDate: LocalDateSchema.nullable(),
     sessionId: IdSchema.nullable(),
   }),
@@ -106,6 +108,8 @@ export const UploadDocumentRequestSchema = z.discriminatedUnion("storage", [
     mediaType: BlobMediaTypeSchema,
     /** Images are resized by the UI first (UPLOAD_MAX_IMAGE_EDGE_PX); PDFs go as they are. */
     base64: z.string().min(1),
+    /** The file's name when it came from a file; null for pasted text. */
+    fileName: z.string().min(1).max(200).nullable(),
     messageDate: LocalDateSchema.nullable(),
     sessionId: IdSchema.nullable(),
   }),

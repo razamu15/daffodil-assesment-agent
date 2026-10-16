@@ -34,7 +34,7 @@ import { addSession } from "./starterWorld";
 import type { MockWorld } from "./world";
 
 function addTextDocument(world: MockWorld, docId: string, kind: DocumentKindT, text: string, sessionId: string | null): SourceDocument {
-  const doc: SourceDocument = { docId, kind, content: { storage: DocumentStorage.INLINE_TEXT, text }, messageDate: null, receivedAt: world.now(), sessionId };
+  const doc: SourceDocument = { docId, kind, content: { storage: DocumentStorage.INLINE_TEXT, text }, fileName: null, messageDate: null, receivedAt: world.now(), sessionId };
   world.documents.push(doc);
   return doc;
 }

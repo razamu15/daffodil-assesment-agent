@@ -15,7 +15,7 @@
  * the Agent Lambda handler (I3).
  */
 import { ChatRole, StoredEntity, TurnStatus, WriteConditionKind } from "@helper-assistant/domain";
-import type { ChatMessage, DocumentKind, Id, Turn, WriteOp } from "@helper-assistant/domain";
+import type { AttachmentRef, ChatMessage, Id, Turn, WriteOp } from "@helper-assistant/domain";
 import type { AgentDeps } from "../deps";
 import { systemPrompt } from "../prompt/systemPrompt";
 import { HINTS_TOP_K, HISTORY_MAX_MESSAGES } from "../settings";
@@ -58,13 +58,13 @@ export async function runTurn({ turnId, sessionId }: { turnId: Id; sessionId: Id
   return finish(deps, running, { replyText, error, trace });
 }
 
-/** Attachments by id and kind. A missing document is a broken turn input, so it fails the turn. */
-async function attachmentsOf({ store }: AgentDeps, turn: Turn): Promise<{ docId: Id; kind: DocumentKind }[]> {
+/** Attachments by id, kind and file name. A missing document is a broken turn input, so it fails the turn. */
+async function attachmentsOf({ store }: AgentDeps, turn: Turn): Promise<AttachmentRef[]> {
   return Promise.all(
     turn.input.attachmentDocIds.map(async (docId) => {
       const document = await store.getDocument(docId);
       if (document === null) throw new Error(`Attached document ${docId} not found`);
-      return { docId, kind: document.kind };
+      return { docId, kind: document.kind, fileName: document.fileName };
     }),
   );
 }

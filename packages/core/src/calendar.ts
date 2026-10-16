@@ -78,3 +78,11 @@ export function absoluteMinutesOfDate(date: LocalDate): number {
 export function dateOfAbsoluteMinutes(minutes: number): LocalDate {
   return fromUtcMs(Math.floor(minutes / MINUTES_PER_DAY) * MS_PER_DAY);
 }
+
+const MONTH_ABBREVIATION = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** "Sep 15": dates in plain-words explanations. */
+export function formatDay(date: LocalDate): string {
+  const [, month, day] = date.split("-");
+  return `${MONTH_ABBREVIATION[Number(month) - 1]} ${Number(day)}`;
+}
